@@ -1,5 +1,12 @@
 ﻿// dllmain.cpp : 定义 DLL 应用程序的入口点。
 #include "pch.h"
+#include "framework.h"
+#include "detours.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <Windows.h>
+#include <iostream>
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
