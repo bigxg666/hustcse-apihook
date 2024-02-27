@@ -5,9 +5,9 @@
 #define PAGE_SIZE  4096
 //正常操作
 void showMenu();
-void heapCreateAndDestory();
 void writeFileString();
 void readFileString();
+void heapCreateAndDestory();
 void regCreateAndSetValue();
 void regOpenAndDelValue();
 void recvData();
