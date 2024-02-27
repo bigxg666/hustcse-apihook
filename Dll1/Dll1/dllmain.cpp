@@ -3,12 +3,10 @@
 #include "framework.h"
 #include "detours.h"
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <Windows.h>
 #include <iostream>
-
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
