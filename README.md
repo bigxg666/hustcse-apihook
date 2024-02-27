@@ -4,8 +4,12 @@
 信安2104
 
 #### 软件架构
-软件架构说明
-
+Detours-main: detours库的源码  
+Dll1: 测试用  
+FCInject: 注入程序  
+RegDll: 注册表相关行为监测  
+test_exe: 测试程序  
+&emsp;Reg_test.exe: 新建、修改注册表等行为  
 
 #### 安装教程
 

@@ -13,7 +13,6 @@
 SYSTEMTIME st;
 
 // 定义和引入需要Hook的函数和替换的函数
-static int (WINAPI* OldMessageBoxW)(_In_opt_ HWND hWnd, _In_opt_ LPCWSTR lpText, _In_opt_ LPCWSTR lpCaption, _In_ UINT uType) = MessageBoxW;
 static int (WINAPI* OldMessageBoxA)(_In_opt_ HWND hwnd, _In_opt_ LPCSTR lpText, _In_opt_ LPCSTR lpCaption, _In_ UINT uType) = MessageBoxA;
 
 extern "C" __declspec(dllexport)int WINAPI NewMessageBoxA(_In_opt_ HWND hWnd, _In_opt_ LPCSTR lpText, _In_opt_ LPCSTR lpCaption, _In_ UINT uType) {
@@ -25,13 +24,15 @@ extern "C" __declspec(dllexport)int WINAPI NewMessageBoxA(_In_opt_ HWND hWnd, _I
 	return OldMessageBoxA(NULL, "new MessageBoxA", "Hooked", MB_OK);
 }
 
+static int (WINAPI* OldMessageBoxW)(_In_opt_ HWND hWnd, _In_opt_ LPCWSTR lpText, _In_opt_ LPCWSTR lpCaption, _In_ UINT uType) = MessageBoxW;
+
 extern "C" __declspec(dllexport)int WINAPI NewMessageBoxW(_In_opt_ HWND hWnd, _In_opt_ LPCWSTR lpText, _In_opt_ LPCWSTR lpCaption, _In_ UINT uType) {
 	printf("\n\n****************************************\n");
 	printf("MessageBoxW Hooked\n");
 	GetLocalTime(&st);
 	printf("DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 	printf("****************************************\n\n");
-	return OldMessageBoxW(NULL, L"new MessageBoxA", L"Hooked", MB_OK);
+	return OldMessageBoxW(NULL, L"new MessageBoxW", L"Hooked", MB_OK);
 }
 
 // 文件操作 OpenFile CreateFile
@@ -97,7 +98,7 @@ static BOOL(WINAPI* OldHeapDestroy)(HANDLE) = HeapDestroy;
 
 extern "C" __declspec(dllexport)BOOL WINAPI NewHeapDestroy(HANDLE hHeap) {
 	printf("\n\n****************************************\n");
-	printf("HeapCreate Hooked\n");
+	printf("HeapDestroy Hooked\n");
 	GetLocalTime(&st);
 	printf("DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
@@ -114,10 +115,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 		DetourTransactionBegin();
 		DetourUpdateThread(GetCurrentThread());
 		DetourAttach(&(PVOID&)OldMessageBoxW, NewMessageBoxW);
-		DetourAttach(&(PVOID&)OldMessageBoxA, NewMessageBoxW);
-		DetourAttach(&(PVOID&)OldCreateFile, NewMessageBoxW);
-		DetourAttach(&(PVOID&)OldHeapCreate, NewMessageBoxW);
-		DetourAttach(&(PVOID&)OldHeapDestroy, NewMessageBoxW);
+		DetourAttach(&(PVOID&)OldMessageBoxA, NewMessageBoxA);
+		DetourAttach(&(PVOID&)OldCreateFile, NewCreateFile);
+		DetourAttach(&(PVOID&)OldHeapCreate, NewHeapCreate);
+		DetourAttach(&(PVOID&)OldHeapDestroy, NewHeapDestroy);
 		DetourTransactionCommit();
 		break;
 	case DLL_THREAD_ATTACH:
@@ -126,10 +127,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 		DetourTransactionBegin();
 		DetourUpdateThread(GetCurrentThread());
 		DetourDetach(&(PVOID&)OldMessageBoxW, NewMessageBoxW);
-		DetourDetach(&(PVOID&)OldMessageBoxA, NewMessageBoxW);
-		DetourDetach(&(PVOID&)OldCreateFile, NewMessageBoxW);
-		DetourDetach(&(PVOID&)OldHeapCreate, NewMessageBoxW);
-		DetourDetach(&(PVOID&)OldHeapDestroy, NewMessageBoxW);
+		DetourDetach(&(PVOID&)OldMessageBoxA, NewMessageBoxA);
+		DetourDetach(&(PVOID&)OldCreateFile, NewCreateFile);
+		DetourDetach(&(PVOID&)OldHeapCreate, NewHeapCreate);
+		DetourDetach(&(PVOID&)OldHeapDestroy, NewHeapDestroy);
 		DetourTransactionCommit();
 		break;
 	}

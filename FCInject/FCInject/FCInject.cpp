@@ -1,5 +1,5 @@
 ﻿// FCInject.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
-//
+// 测试注册表程序
 
 #include <iostream>
 #include <windows.h>
@@ -14,13 +14,13 @@ int main(){
 	ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
 	si.cb = sizeof(STARTUPINFO);
 	WCHAR DirPath[MAX_PATH + 1];
-	wcscpy_s(DirPath, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\Dll1\\x64\\Debug");			// Dll的文件夹
-	char DLLPath[MAX_PATH + 1] = "C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\Dll1\\x64\\Debug\\Dll1.dll";	// Dll的地址
+	wcscpy_s(DirPath, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\RegDll\\x64\\Debug");				// Dll的文件夹
+	char DLLPath[MAX_PATH + 1] = "C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\RegDll\\x64\\Debug\\RegDll.dll";	// Dll的地址
 	WCHAR EXE[MAX_PATH + 1] = { 0 };
-	wcscpy_s(EXE, MAX_PATH, L"D:\\Downloads\\PFSafetyGuard-main\\PFSafetyGuard-main\\testCode\\x64\\Debug\\testCode.exe");	// 需要注入程序的地址
+	wcscpy_s(EXE, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\test_exe\\Reg_test.exe");				// 需要注入程序的地址
 
 	if (DetourCreateProcessWithDllEx(EXE, NULL, NULL, NULL, TRUE, CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED, NULL, DirPath, &si, &pi, DLLPath, NULL)) {
-		MessageBoxA(NULL, "INJECT", "INJECT", NULL);
+		// MessageBoxA(NULL, "INJECT", "INJECT", NULL);
 		ResumeThread(pi.hThread);
 		WaitForSingleObject(pi.hThread, INFINITE);
 	}
