@@ -71,8 +71,9 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\Users\Leo\OneDrive\大三\软件安全课程设计\hustcse-apihook\Detours-main\include;$(IncludePath)</IncludePath>
-    <ReferencePath>C:\Users\Leo\OneDrive\大三\软件安全课程设计\hustcse-apihook\Detours-main\lib.X64;$(ReferencePath)</ReferencePath>
+    <IncludePath>C:\gitee\hustcse-apihook\Detours-main\include;$(IncludePath)</IncludePath>
+    <ReferencePath>$(ReferencePath)</ReferencePath>
+    <LibraryPath>C:\gitee\hustcse-apihook\Detours-main\lib.X64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
