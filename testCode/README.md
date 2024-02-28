@@ -1,7 +1,36 @@
-使用visual studio2022打开testCode.sln
+# 介绍
 
-若无法运行请选择 ***项目***  ***C/C++*** ***附加包含目录***
+使用QT Creator创建
 
-于**附加包含目录**中选择include文件夹加入
+用qtcreator打开testCode\testCode.pro.user即可打开项目
 
-程序在Debug文件夹中testCode.exe
+完整项目位于\build-testCode-Desktop_Qt_6_6_2_MinGW_64_bit-Release\testCode\testCode.exe
+
+源码位于\testCode
+
+# 实现的功能
+
+## 正常操作
+
+MessageBoxA MessageBoxW
+
+堆操作
+
+文件操作
+
+注册表操作
+
+socket操作
+
+## 异常操作
+
+堆异常操作
+
+修改exe文件
+
+自复制
+
+修改启动注册表
+
+打开其他文件夹
+
