@@ -3,7 +3,7 @@
 
 int main() {
     // 测试 CreateFile 函数
-    HANDLE hFile = CreateFile(TEXT("C://test.txt"), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE hFile = CreateFile(TEXT("test.txt"), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
         std::cerr << "Failed to create file. Error code: " << GetLastError() << std::endl;
         return 1;
