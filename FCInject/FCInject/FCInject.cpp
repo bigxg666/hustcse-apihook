@@ -13,11 +13,17 @@ int main(){
 	ZeroMemory(&si, sizeof(STARTUPINFO));
 	ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
 	si.cb = sizeof(STARTUPINFO);
+
+	// 设置Dll文件的路径
 	WCHAR DirPath[MAX_PATH + 1];
-	wcscpy_s(DirPath, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\RegDll\\x64\\Debug");				// Dll的文件夹
-	char DLLPath[MAX_PATH + 1] = "C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\RegDll\\x64\\Debug\\RegDll.dll";	// Dll的地址
+	wcscpy_s(DirPath, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\hookDll\\x64\\Debug");
+	char DLLPath[MAX_PATH + 1] = "C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\hookDll\\x64\\Debug\\hookDll.dll";
+	
+	// 设置需要注入程序的地址
 	WCHAR EXE[MAX_PATH + 1] = { 0 };
-	wcscpy_s(EXE, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\test_exe\\Reg_test.exe");				// 需要注入程序的地址
+	// wcscpy_s(EXE, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\test_exe\\filetest.exe");
+	// wcscpy_s(EXE, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\test_exe\\heaptest.exe");
+	wcscpy_s(EXE, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\test_exe\\regtest.exe");
 
 	if (DetourCreateProcessWithDllEx(EXE, NULL, NULL, NULL, TRUE, CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED, NULL, DirPath, &si, &pi, DLLPath, NULL)) {
 		// MessageBoxA(NULL, "INJECT", "INJECT", NULL);
