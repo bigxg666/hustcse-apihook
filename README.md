@@ -7,9 +7,14 @@
 Detours-main: detours库的源码  
 Dll1: 测试用  
 FCInject: 注入程序  
+FileDll: 文件操作行为监测  
+heapDll: 堆操作行为监测  
 RegDll: 注册表相关行为监测  
-test_exe: 测试程序  
-&emsp;Reg_test.exe: 新建、修改注册表等行为  
+hookDll: 总的行为监测Dll
+test_exe: 测试程序（包含源码）  
+&emsp;filetest: 文件行为测试程序  
+&emsp;heaptest: 文件行为测试程序  
+&emsp;regtest: 注册表等行为测试程序  
 
 #### 安装教程
 
