@@ -10,7 +10,7 @@
 
 SYSTEMTIME st;
 
-//文件操作 OpenFile CreateFile
+//文件操作 create/close/read/write/delete
 //创建文件
 static HANDLE(WINAPI* OldCreateFile)(
 	LPCTSTR lpFileName,							//文件名
@@ -55,17 +55,38 @@ extern "C" __declspec(dllexport) HANDLE WINAPI NewCreateFile(
 }
 
 //关闭文件
-static BOOL(WINAPI* OldCloseHandle)(HANDLE hObject) = CloseHandle;
+static BOOL(WINAPI* OldCloseHandle)(HANDLE hObject) = CloseHandle;//参数为打开对象的有效句柄
 
 extern "C" __declspec(dllexport) BOOL WINAPI NewCloseHandle(HANDLE hObject)
 {
-
 	printf("\n\n******************************************\n");
 	printf("CloseHandle Hooked\n");
 	GetLocalTime(&st);
 	printf("DLL日志输出:%d-%d-%d %02d: %02d: %02d: %03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
 	std::cout << "Handle being closed: 0x" << hObject << std::endl;
+
+	// 获取句柄类型
+	DWORD handleType = GetFileType(hObject);
+	switch (handleType)
+	{
+	case FILE_TYPE_CHAR:
+		std::cout << "Handle type: Character device" << std::endl;
+		break;
+	case FILE_TYPE_DISK:
+		std::cout << "Handle type: Disk file" << std::endl;
+		break;
+	case FILE_TYPE_PIPE:
+		std::cout << "Handle type: Pipe" << std::endl;
+		break;
+	case FILE_TYPE_REMOTE:
+		std::cout << "Handle type: Remote file" << std::endl;
+		break;
+	case FILE_TYPE_UNKNOWN:
+	default:
+		std::cout << "Handle type: Unknown" << std::endl;
+		break;
+	}
 
 	BOOL result = OldCloseHandle(hObject);
 	if (result)
@@ -83,19 +104,19 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewCloseHandle(HANDLE hObject)
 
 //读文件
 static BOOL(WINAPI* OldReadFile)(
-	HANDLE       hFile,                         //文件句柄 
-	LPVOID       lpBuffer,                      //读取文件数据存储的内存缓冲区
-	DWORD        nNumberOfBytesToRead,          //要读取的最多字节数
-	LPDWORD      lpNumberOfBytesRead,
-	LPOVERLAPPED lpOverlapped
+	HANDLE       hFile,                         // 文件句柄 
+	LPVOID       lpBuffer,                      // 接收数据用的 buffer
+	DWORD        nNumberOfBytesToRead,          // 要读取的最多字节数
+	LPDWORD      lpNumberOfBytesRead,           // 实际读取到的字节数
+	LPOVERLAPPED lpOverlapped                   // OVERLAPPED 结构，一般设定为 NULL 
 	) = ReadFile;
 
 extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 	HANDLE       hFile,                         //文件句柄 
-	LPVOID       lpBuffer,                      //读取文件数据存储的内存缓冲区
+	LPVOID       lpBuffer,                      //接收数据用的 buffer
 	DWORD        nNumberOfBytesToRead,          //要读取的最多字节数
-	LPDWORD      lpNumberOfBytesRead,
-	LPOVERLAPPED lpOverlapped
+	LPDWORD      lpNumberOfBytesRead,           //实际读取到的字节数
+	LPOVERLAPPED lpOverlapped                   //OVERLAPPED 结构，一般设定为 NULL 
 )
 {
 	printf("\n\n******************************************\n");
@@ -120,23 +141,23 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 
 //写文件
 static BOOL(WINAPI* OldWriteFile)(
-	HANDLE       hFile,                         //文件句柄 
-	LPCVOID       lpBuffer,
-	DWORD        nNumberOfBytesToWrite,
-	LPDWORD      lpNumberOfBytesWritten,
+	HANDLE       hFile,                         // 文件句柄 
+	LPCVOID      lpBuffer,                      // 要写入的数据
+	DWORD        nNumberOfBytesToWrite,         // 要写入的字节数
+	LPDWORD      lpNumberOfBytesWritten,        // 实际写入的字节数
 	LPOVERLAPPED lpOverlapped
 	) = WriteFile;
 
 extern "C" __declspec(dllexport) BOOL WINAPI NewWriteFile(
-	HANDLE       hFile,                         //文件句柄 
-	LPCVOID       lpBuffer,
-	DWORD        nNumberOfBytesToWrite,
-	LPDWORD      lpNumberOfBytesWritten,
-	LPOVERLAPPED lpOverlapped
+	HANDLE       hFile,                         // 文件句柄 
+	LPCVOID      lpBuffer,                      // 要写入的数据
+	DWORD        nNumberOfBytesToWrite,         // 要写入的字节数
+	LPDWORD      lpNumberOfBytesWritten,        // 实际写入的字节数
+	LPOVERLAPPED lpOverlapped                   // OVERLAPPED 结构，一般设定为 NULL
 )
 {
 	printf("\n\n******************************************\n");
-	printf("ReadFile Hooked\n");
+	printf("WriteFile Hooked\n");
 	GetLocalTime(&st);
 	printf("DLL日志输出:%d-%d-%d %02d: %02d: %02d: %03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
