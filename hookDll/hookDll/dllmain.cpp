@@ -10,6 +10,9 @@
 #include <stdlib.h>
 #include <Windows.h>
 #include <iostream>
+#include <sstream>
+#include <unordered_set>
+
 
 #pragma comment(lib, "detours.lib")
 
@@ -225,12 +228,24 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewDeleteFile(LPCTSTR lpFileName)
 * HeapCreate HeapDestroy HeapAlloc HeapFree
 */
 
+// 由于程序alloc过于频繁，我们需要记录特定的堆句柄
+// 这一步是为了仅输出对应于我们create句柄的alloc
+std::unordered_set<HANDLE> recordedHeapHandles;
+// 记录堆句柄的函数
+void RecordHeapHandle(HANDLE hHeap)
+{
+	recordedHeapHandles.insert(hHeap);
+}
 static HANDLE(WINAPI* OldHeapCreate)(DWORD fIOoptions, SIZE_T dwInitialSize, SIZE_T dwMaximumSize) = HeapCreate;
 
 extern "C" __declspec(dllexport)HANDLE WINAPI NewHeapCreate(DWORD fIOoptions, SIZE_T dwInitialSize, SIZE_T dwMaximumSize) {
 	HANDLE hHeap = OldHeapCreate(fIOoptions, dwInitialSize, dwMaximumSize);
 	printf("\n\n****************************************\n");
 	printf("HeapCreate Hooked\n");
+	// 记录堆句柄
+	RecordHeapHandle(hHeap);
+	printf("HeapCreate Hooked [Heap Handle: %p]\n", hHeap);
+
 	GetLocalTime(&st);
 	printf("DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
@@ -246,7 +261,7 @@ static BOOL(WINAPI* OldHeapDestroy)(HANDLE) = HeapDestroy;
 
 extern "C" __declspec(dllexport)BOOL WINAPI NewHeapDestroy(HANDLE hHeap) {
 	printf("\n\n****************************************\n");
-	printf("HeapDestroy Hooked\n");
+	printf("HeapCreate Hooked\n");
 	GetLocalTime(&st);
 	printf("DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
@@ -256,19 +271,9 @@ extern "C" __declspec(dllexport)BOOL WINAPI NewHeapDestroy(HANDLE hHeap) {
 	return OldHeapDestroy(hHeap);
 }
 
-// 堆分配
 static LPVOID(WINAPI* OldHeapAlloc)(HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes) = HeapAlloc;
 
-/*
-* 必须定义全局变量，实现“上锁”的操作。
-* 否则会出现死循环！
-*/
 bool isHookEnabled = true;
-
-/*
-* 堆分配是一个经常进行的操作，这个函数会被反复调用，打印的信息会很多
-* 需要考虑如何提高截获的精确度（课上讲过）
-*/
 
 extern "C" __declspec(dllexport)LPVOID WINAPI NewHeapAlloc(HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes) {
 
@@ -280,9 +285,23 @@ extern "C" __declspec(dllexport)LPVOID WINAPI NewHeapAlloc(HANDLE hHeap, DWORD d
 	// 禁用钩子函数，“上锁”
 	isHookEnabled = false;
 
+	// 检查句柄是否在记录的堆句柄集合中
+	if (recordedHeapHandles.find(hHeap) != recordedHeapHandles.end())
+	{
+		printf("\n\n****************************************\n");
+		printf("HeapAlloc Hooked\n");
+		// 输出分配内存的打印提示
+		printf("HeapAlloc Hooked [Heap Handle: %p]\n", hHeap);
+	}
+	else {
+		isHookEnabled = true;
+		return OldHeapAlloc(hHeap, dwFlags, dwBytes);
+	}
+
 	LPVOID lpMemory = OldHeapAlloc(hHeap, dwFlags, dwBytes);
-	printf("\n\n****************************************\n");
-	printf("HeapAlloc Hooked\n");
+
+
+
 	GetLocalTime(&st);
 	printf("DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
@@ -295,7 +314,6 @@ extern "C" __declspec(dllexport)LPVOID WINAPI NewHeapAlloc(HANDLE hHeap, DWORD d
 
 	// 启用钩子函数，“开锁”
 	isHookEnabled = true;
-
 	return lpMemory;
 }
 
@@ -539,7 +557,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReser
 		// 堆操作
 		DetourAttach(&(PVOID&)OldHeapCreate, NewHeapCreate);
 		DetourAttach(&(PVOID&)OldHeapDestroy, NewHeapDestroy);
-		// DetourAttach(&(PVOID&)OldHeapAlloc, NewHeapAlloc);
+		DetourAttach(&(PVOID&)OldHeapAlloc, NewHeapAlloc);
 		DetourAttach(&(PVOID&)OldHeapFree, NewHeapFree);
 
 		// 注册表操作
@@ -567,7 +585,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReser
 		// 堆操作
 		DetourDetach(&(PVOID&)OldHeapCreate, NewHeapCreate);
 		DetourDetach(&(PVOID&)OldHeapDestroy, NewHeapDestroy);
-		// DetourDetach(&(PVOID&)OldHeapAlloc, NewHeapAlloc);
+		DetourDetach(&(PVOID&)OldHeapAlloc, NewHeapAlloc);
 		DetourDetach(&(PVOID&)OldHeapFree, NewHeapFree);
 
 		// 注册表操作
