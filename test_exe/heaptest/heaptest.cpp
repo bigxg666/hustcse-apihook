@@ -51,6 +51,8 @@ int main() {
     HeapDestroy(heapHandle);
 	printf("堆已被销毁\n");
 
+    Sleep(3000);
+
     return 0;
 }
 
