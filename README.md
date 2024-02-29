@@ -4,14 +4,16 @@
 信安2104
 
 #### 软件架构
-Detours-main: detours库的源码  
-Detours: Detours库  
-Dll1: 测试用  
+Detours-main: Detours库的源码  
+Detours: 编译好的Detours库  
+Dll1: 测试用Dll  
 FCInject: 注入程序  
 FileDll: 文件操作行为监测  
 heapDll: 堆操作行为监测  
 RegDll: 注册表相关行为监测  
-hookDll: 总的行为监测Dll
+hookDll: 总的行为监测Dll,  **能够向共享内存中写入日志**   
+ShareMemoryTest: 共享内存测试  
+&emsp; **ReadLog: 从共享内存中读取日志并显示**   
 test_exe: 测试程序（包含源码）  
 &emsp;filetest: 文件行为测试程序  
 &emsp;heaptest: 文件行为测试程序  
@@ -25,7 +27,7 @@ test_exe: 测试程序（包含源码）
 
 #### 使用说明
 
-1.  xxxx
+1. 由于Dll向共享内存写入数据需要时间，因此当测试程序在短时间内进行大量操作时，ReadLog模块将无法全部将操作显示出来。在设计测试程序时需要注意在不同操作之间**增加停顿**或是**sleep**。
 2.  xxxx
 3.  xxxx
 
