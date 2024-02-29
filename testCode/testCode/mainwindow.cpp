@@ -46,6 +46,8 @@ void MainWindow::on_pushButton_3_clicked()
         CallMsgBox(L"HeapFree执行");
         HeapDestroy(hHeap);
         CallMsgBox(L"HeapDestroy执行");
+    }else{
+        CallMsgBox(L"创建堆失败");
     }
 }
 
@@ -57,11 +59,11 @@ void MainWindow::on_pushButton_4_clicked()
         GENERIC_READ | GENERIC_WRITE,
         0,
         NULL,
-        OPEN_EXISTING,
+        CREATE_ALWAYS,
         FILE_ATTRIBUTE_NORMAL,
         NULL
         );
-    CallMsgBox(L"创建文件已执行");
+    CallMsgBox(L"已创建test.txt");
     DWORD sz = 0;
     char buf1[4096];
     memcpy(buf1, "Hello World",12);
@@ -76,6 +78,8 @@ void MainWindow::on_pushButton_4_clicked()
     CallMsgBox(L"读文件已执行");
     CloseHandle(hFile);
     CallMsgBox(L"文件已关闭");
+    DeleteFile(TEXT("test.txt"));
+    CallMsgBox(L"test.txt已删除");
 }
 
 
@@ -105,6 +109,14 @@ void MainWindow::on_pushButton_5_clicked()
     }
     RegCloseKey(hk2);
     CallMsgBox(L"注册表已关闭");
+    //启动项
+    keyname = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run";
+    dwType = REG_SZ;
+    dwLen = 256;
+    res = RegCreateKeyExA(HKEY_LOCAL_MACHINE, keyname, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hk, NULL);
+    CallMsgBox(L"开机启动项已创建");
+    RegCloseKey(hk);
+    CallMsgBox(L"注册表项已关闭");
 }
 
 
