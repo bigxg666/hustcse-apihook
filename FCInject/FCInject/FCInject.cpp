@@ -16,17 +16,17 @@ int main(){
 
 	// 设置Dll文件的路径
 	WCHAR DirPath[MAX_PATH + 1];
-	wcscpy_s(DirPath, MAX_PATH, L"E:\\security_task\\hookDll\\x64\\Debug");
-	char DLLPath[MAX_PATH + 1] = "E:\\security_task\\hookDll\\x64\\Debug\\hookDll.dll";
+	wcscpy_s(DirPath, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\hookDll\\x64\\Debug");
+	char DLLPath[MAX_PATH + 1] = "C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\hookDll\\x64\\Debug\\hookDll.dll";
 	
 	// 设置需要注入程序的地址
 	WCHAR EXE[MAX_PATH + 1] = { 0 };
 	// wcscpy_s(EXE, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\test_exe\\filetest.exe");
-	wcscpy_s(EXE, MAX_PATH, L"E:\\security_task\\heaptest\\x64\\Debug\\heaptest.exe");
-	// wcscpy_s(EXE, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\test_exe\\regtest.exe");
+	// wcscpy_s(EXE, MAX_PATH, L"E:\\security_task\\heaptest\\x64\\Debug\\heaptest.exe");
+	wcscpy_s(EXE, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\test_exe\\regtest.exe");
 
 	if (DetourCreateProcessWithDllEx(EXE, NULL, NULL, NULL, TRUE, CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED, NULL, DirPath, &si, &pi, DLLPath, NULL)) {
-		MessageBoxA(NULL, "INJECT", "INJECT", NULL);
+		// MessageBoxA(NULL, "INJECT", "INJECT", NULL);
 		ResumeThread(pi.hThread);
 		WaitForSingleObject(pi.hThread, INFINITE);
 	}
@@ -35,6 +35,7 @@ int main(){
 		char error[100];
 		sprintf_s(error, "%d", GetLastError());
 	}
+
 	return 0;
 }
 
