@@ -49,7 +49,7 @@ static BOOL(WINAPI* OldHeapDestroy)(HANDLE) = HeapDestroy;
 
 extern "C" __declspec(dllexport)BOOL WINAPI NewHeapDestroy(HANDLE hHeap) {
 	printf("\n\n****************************************\n");
-	printf("HeapCreate Hooked\n");
+	printf("HeapDestroy Hooked\n");
 	GetLocalTime(&st);
 	printf("DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
