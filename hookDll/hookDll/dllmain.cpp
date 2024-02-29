@@ -16,32 +16,38 @@
 
 #pragma comment(lib, "detours.lib")
 
-#pragma pack(1)
+const BYTE LOG_UNINIT = 0xFF;
 
-const uint8_t LOG_INFO = 0x00;
-const uint8_t LOG_CUSTOM = 0x01;
-const uint8_t LOG_WARNING = 0x02;
-const uint8_t LOG_ERROR = 0x03;
+const BYTE LOG_INFO = 0x00;
+const BYTE LOG_CUSTOM = 0x01;
+const BYTE LOG_WARNING = 0x02;
+const BYTE LOG_ERROR = 0x03;
 
-const uint8_t CTRL_QUIT = 0x10;
+const BYTE CTRL_QUIT = 0x10;
 
-const int MAX_LEN = 65536;
+const int MAX_MSG_NUM = 16;				// 同一时刻最多提供16条提示信息
+const int MAX_MSG_LEN = 512;			// 消息的最大长度
+
+const int MAX_FUNCNAME_LEN = 128;		// 函数名最大支持128字节
 const int MAX_ARG_NUM = 16;				// 最多支持16个参数
 const int MAX_ARGNAME_LEN = 128;		// 每个参数的名称最大支持128字节
 const int MAX_ARGDATA_LEN = 512;		// 每个参数的数据最大支持512字节
 
 typedef struct SharedData {
 	bool updateFlag = false;			// 更新标志
-	BYTE type = 0;						// 日志类型
 
-	char data[MAX_LEN] = {};			// 提示信息
+	SYSTEMTIME st;						// 系统时间
+	BYTE type = 0xFF;					// 日志类型
 
-	BYTE argNum = 0;					// 参数个数，仅在type为LOG_CUSTOM时有效
-	BYTE argName[MAX_ARG_NUM][MAX_ARGNAME_LEN] = {};		// 参数名称表
-	BYTE argData[MAX_ARG_NUM][MAX_ARGDATA_LEN] = {};		// 参数数据表
+	BYTE msgNum = 0;										// 同一时刻提供的提示信息数量
+	char message[MAX_MSG_NUM][MAX_MSG_LEN] = {};			// 提示信息
+
+	// 以下内容仅在type为LOG_CUSTOM时有效
+	char funcName[MAX_FUNCNAME_LEN] = {};					// Hook到的函数名
+	BYTE argNum = 0;										// 参数个数
+	char argName[MAX_ARG_NUM][MAX_ARGNAME_LEN] = {};		// 参数名称表
+	char argData[MAX_ARG_NUM][MAX_ARGDATA_LEN] = {};		// 参数数据表
 }SharedData;
-
-#pragma pack()
 
 std::mutex mtx;							// 信号量
 SYSTEMTIME st;
@@ -88,6 +94,7 @@ extern "C" __declspec(dllexport) HANDLE WINAPI NewCreateFile(
 	int num = WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, NULL, 0, NULL, FALSE);
 	char* pchar = new char[num];
 	WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, pchar, num, NULL, FALSE);
+	delete[] pchar;								// 注意释放内存，否则造成内存泄漏！
 
 	std::cout << "lpFileName: " << std::endl;
 	std::cout << "dwDesiredAccess: 0x" << std::hex << dwDesiredAccess << std::endl;
@@ -280,7 +287,7 @@ extern "C" __declspec(dllexport)HANDLE WINAPI NewHeapCreate(DWORD fIOoptions, SI
 	printf("HeapCreate Hooked\n");
 	// 记录堆句柄
 	RecordHeapHandle(hHeap);
-	printf("HeapCreate Hooked [Heap Handle: %p]\n", hHeap);
+	printf("HeapCreate Hooked [Heap Handle: 0x%p]\n", hHeap);
 
 	GetLocalTime(&st);
 	printf("DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
@@ -327,7 +334,7 @@ extern "C" __declspec(dllexport)LPVOID WINAPI NewHeapAlloc(HANDLE hHeap, DWORD d
 		printf("\n\n****************************************\n");
 		printf("HeapAlloc Hooked\n");
 		// 输出分配内存的打印提示
-		printf("HeapAlloc Hooked [Heap Handle: %p]\n", hHeap);
+		printf("HeapAlloc Hooked [Heap Handle: 0x%p]\n", hHeap);
 	}
 	else {
 		isHookEnabled = true;
@@ -402,15 +409,39 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegCreateKeyExA(
 	PHKEY phkResult,										// 接收新键的句柄
 	LPDWORD lpdwDisposition									// 接收操作结果的指针
 ) {
-	mtx.lock();				// 上锁
+	mtx.lock();												// 上锁
 
-	pData->updateFlag = !pData->updateFlag;
-	pData->type = LOG_CUSTOM;
-	GetLocalTime(&st);
-	sprintf(pData->data, "\n\n******************** [日志] ********************\n");
-	sprintf(pData->data + strlen(pData->data), "RegCreateKeyExA Hooked\n");
-	sprintf(pData->data + strlen(pData->data), "DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+	GetLocalTime(&(pData->st));								// 设置日志时间
+	pData->type = LOG_CUSTOM;								// 设置日志类型
 
+	strcpy(pData->funcName, "RegCreateKeyExA");				// 设置函数名
+	pData->argNum = 9;										// 设置函数参数的个数
+
+	// 复制参数名
+	strcpy(pData->argName[0], "hKey");
+	strcpy(pData->argName[1], "lpSubKey");
+	strcpy(pData->argName[2], "Reserved");
+	strcpy(pData->argName[3], "lpClass");
+	strcpy(pData->argName[4], "dwOptions");
+	strcpy(pData->argName[5], "samDesired");
+	strcpy(pData->argName[6], "lpSecurityAttributes");
+	strcpy(pData->argName[7], "phkResult");
+	strcpy(pData->argName[8], "lpdwDisposition");
+
+	// 复制参数值
+	sprintf(pData->argData[0], "Addr: 0x%p", hKey);			// HKEY大小8字节
+	sprintf(pData->argData[1], "Value: %s", lpSubKey);
+	sprintf(pData->argData[2], "Value: 0x%x", Reserved);	// DWORD大小4字节
+	sprintf(pData->argData[3], "Addr: 0x%p", lpClass);
+	sprintf(pData->argData[4], "Value: 0x%x", dwOptions);
+	sprintf(pData->argData[5], "Value: 0x%x", samDesired);	// REGSAM大小4字节
+	sprintf(pData->argData[6], "Addr: 0x%p", lpSecurityAttributes);
+	sprintf(pData->argData[7], "Addr: 0x%p", phkResult);
+	sprintf(pData->argData[8], "Addr: 0x%p", lpdwDisposition);
+
+	pData->updateFlag = !pData->updateFlag;					// 更新共享变量，使ReadLog程序监测到更新并展示信息
+
+	/*
 	std::cout << "hKey: " << hKey << std::endl;
 	std::cout << "lpSubKey: " << lpSubKey << std::endl;
 	std::cout << "Reserved: " << Reserved << std::endl;
@@ -426,54 +457,40 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegCreateKeyExA(
 	if (lpdwDisposition == NULL) {
 		std::cout << "lpdwDisposition: " << "NULL" << std::endl;
 	}
-
-	sprintf(pData->data + strlen(pData->data), "************************************************\n\n");
-
-	mtx.unlock();				// 开锁
-
-	/*
-	* RegOpenKeyExA函数：
-	* 打开一个已存在的注册表项，返回值为ERROR_SUCCESS表示打开成功。
 	*/
 
+	// RegOpenKeyExA函数：打开一个已存在的注册表项，返回值为ERROR_SUCCESS表示打开成功。
 	// 调用RegOpenKeyExA函数打开指定的注册表项
 	auto judge = OldRegOpenKeyExA(hKey, lpSubKey, 0, samDesired, phkResult);
 
-	// 返回值不为ERROR_SUCCESS，说明指定的注册表项在函数调用的时候并不存在，因此认为程序存在新增注册表项操作
-	if (judge != ERROR_SUCCESS) {
-		mtx.lock();
-		pData->updateFlag = !pData->updateFlag;
-		pData->type = LOG_WARNING;
-		sprintf(pData->data, "-------------------- [警告] --------------------\n");
-		sprintf(pData->data + strlen(pData->data), "此程序存在新增注册表项操作！\n");
-		sprintf(pData->data + strlen(pData->data), "------------------------------------------------\n");
-		mtx.unlock();
-	}
-
-	/*
-	* RegCreateKeyExA函数：
-	* 创建指定的注册表项。如果该项已存在，函数将打开它。
-	*/
-
+	// RegCreateKeyExA函数：创建指定的注册表项。如果该项已存在，函数将打开它。
 	// 调用RegCreateKeyExA函数创建或打开指定的注册表项
 	auto status = OldRegCreateKeyExA(hKey, lpSubKey, Reserved, lpClass, dwOptions, samDesired, lpSecurityAttributes, phkResult, lpdwDisposition);
 
-	/*
-	* SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run是一个特殊的注册表项。
-	* 这个注册表项包含了一系列的键值对，每一个键值对都对应一个需要在系统启动时自动运行的程序。
-	*/
-
-	// 对比打开的子键名称。若子键为"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"，则说明程序很有可能要修改自启动项。
-	if (strcmp(lpSubKey, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run") == 0) {
-		mtx.lock();
-		pData->updateFlag = !pData->updateFlag;
+	if (judge != ERROR_SUCCESS || strcmp(lpSubKey, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run") == 0) {
+		GetLocalTime(&(pData->st));
 		pData->type = LOG_WARNING;
-		sprintf(pData->data, "-------------------- [警告] --------------------\n");
-		sprintf(pData->data + strlen(pData->data), "此程序存在修改注册表自启动项的操作！\n");
-		sprintf(pData->data + strlen(pData->data), "------------------------------------------------\n");
-		mtx.unlock();
+		pData->msgNum = 0;
+		if (judge != ERROR_SUCCESS) {
+			// 返回值不为ERROR_SUCCESS，说明指定的注册表项在函数调用的时候并不存在，因此认为程序存在新增注册表项操作
+			printf("此程序存在新增注册表项操作！\n");
+			sprintf(pData->message[pData->msgNum++], "此程序存在新增注册表项操作！");
+		}
+
+		/*
+		* SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run是一个特殊的注册表项。
+		* 这个注册表项包含了一系列的键值对，每一个键值对都对应一个需要在系统启动时自动运行的程序。
+		*/
+		if (strcmp(lpSubKey, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run") == 0) {
+			// 对比打开的子键名称。若子键为"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"，则说明程序很有可能要修改自启动项。
+			printf("此程序存在修改注册表自启动项的操作！\n");
+			sprintf(pData->message[pData->msgNum++], "此程序存在修改注册表自启动项的操作！");
+		}
+		
+		pData->updateFlag = !pData->updateFlag;
 	}
 
+	mtx.unlock();
 	return status;
 }
 
@@ -486,22 +503,35 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegOpenKeyExA(
 	PHKEY phkResult			// 接收打开的键的句柄
 ) {
 	mtx.lock();
-	pData->updateFlag = !pData->updateFlag;
+	GetLocalTime(&(pData->st));
 	pData->type = LOG_CUSTOM;
-	GetLocalTime(&st);
-	sprintf(pData->data, "\n\n******************** [日志] ********************\n");
-	sprintf(pData->data + strlen(pData->data), "RegOpenKeyExA Hooked\n");
-	sprintf(pData->data + strlen(pData->data), "DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
+	strcpy(pData->funcName, "RegOpenKeyExA");
+	pData->argNum = 5;
+
+	strcpy(pData->argName[0], "hKey");
+	strcpy(pData->argName[1], "lpSubKey");
+	strcpy(pData->argName[2], "ulOptions");
+	strcpy(pData->argName[3], "samDesired");
+	strcpy(pData->argName[4], "phkResult");
+
+	sprintf(pData->argData[0], "Addr: 0x%p", hKey);
+	sprintf(pData->argData[1], "Value: %s", lpSubKey);
+	sprintf(pData->argData[2], "Value: 0x%x", ulOptions);
+	sprintf(pData->argData[3], "Value: 0x%x", samDesired);
+	sprintf(pData->argData[4], "Addr: 0x%p", phkResult);
+
+	pData->updateFlag = !pData->updateFlag;
+
+	/*
 	std::cout << "hKey: " << hKey << std::endl;
 	std::cout << "lpSubKey: " << lpSubKey << std::endl;
 	std::cout << "ulOptions: " << ulOptions << std::endl;
 	std::cout << "samDesired: " << samDesired << std::endl;
 	std::cout << "phkResult: " << phkResult << std::endl;
+	*/
 
-	sprintf(pData->data + strlen(pData->data), "************************************************\n\n");
 	mtx.unlock();
-
 	return OldRegOpenKeyExA(hKey, lpSubKey, ulOptions, samDesired, phkResult);
 }
 
@@ -510,18 +540,23 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegCloseKey(
 	HKEY hKey				// 注册表主键的句柄
 ) {
 	mtx.lock();
-	pData->updateFlag = !pData->updateFlag;
+	GetLocalTime(&(pData->st));
 	pData->type = LOG_CUSTOM;
-	GetLocalTime(&st);
-	sprintf(pData->data, "\n\n******************** [日志] ********************\n");
-	sprintf(pData->data + strlen(pData->data), "RegCloseKey Hooked\n");
-	sprintf(pData->data + strlen(pData->data), "DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-	
+
+	strcpy(pData->funcName, "RegCloseKey");
+	pData->argNum = 1;
+
+	strcpy(pData->argName[0], "hKey");
+
+	sprintf(pData->argData[0], "Addr: 0x%p", hKey);
+
+	pData->updateFlag = !pData->updateFlag;
+
+	/*
 	std::cout << "hKey: " << hKey << std::endl;
+	*/
 
-	sprintf(pData->data + strlen(pData->data), "************************************************\n\n");
 	mtx.unlock();
-
 	return OldRegCloseKey(hKey);
 }
 
@@ -531,25 +566,41 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegQueryValueExA(
 	LPCSTR lpValueName,		// 值的名称
 	LPDWORD lpReserved,		// 保留，必须为NULL
 	LPDWORD lpType,			// 接受值类型的指针
-	LPBYTE lsendData,			// 接收值数据的缓冲区的指针
+	LPBYTE lsendData,		// 接收值数据的缓冲区的指针
 	LPDWORD lpcbData		// 缓冲区的大小，以字节为单位
 ) {
 	mtx.lock();
-	pData->updateFlag = !pData->updateFlag;
+	GetLocalTime(&(pData->st));
 	pData->type = LOG_CUSTOM;
-	GetLocalTime(&st);
-	sprintf(pData->data, "\n\n******************** [日志] ********************\n");
-	sprintf(pData->data + strlen(pData->data), "RegQueryValueExA Hooked\n");
-	sprintf(pData->data + strlen(pData->data), "DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
+	strcpy(pData->funcName, "RegQueryValueExA");
+	pData->argNum = 6;
+
+	strcpy(pData->argName[0], "hKey");
+	strcpy(pData->argName[1], "lpValueName");
+	strcpy(pData->argName[2], "lpReserved");
+	strcpy(pData->argName[3], "lpType");
+	strcpy(pData->argName[4], "lsendData");
+	strcpy(pData->argName[5], "lpcbData");
+
+	sprintf(pData->argData[0], "Addr: 0x%p", hKey);
+	sprintf(pData->argData[1], "Value: %s", lpValueName);
+	sprintf(pData->argData[2], "Addr: 0x%p", lpReserved);
+	sprintf(pData->argData[3], "Addr: 0x%p", lpType);
+	sprintf(pData->argData[4], "Addr: 0x%p", lsendData);
+	sprintf(pData->argData[5], "Addr: 0x%p", lpcbData);
+
+	pData->updateFlag = !pData->updateFlag;
+
+	/*
 	std::cout << "hKey: " << hKey << std::endl;
 	std::cout << "lpValueName: " << lpValueName << std::endl;
 	std::cout << "lpReserved: " << lpReserved << std::endl;
 	std::cout << "lpType: " << lpType << std::endl;
 	std::cout << "lsendData: " << lsendData << std::endl;
 	std::cout << "lpcbData: " << lpcbData << std::endl;
+	*/
 
-	sprintf(pData->data + strlen(pData->data), "************************************************\n\n");
 	mtx.unlock();
 	return OldRegQueryValueExA(hKey, lpValueName, lpReserved, lpType, lsendData, lpcbData);
 }
@@ -560,47 +611,60 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegSetValueExA(
 	LPCSTR lpValueName,		// 值的名称
 	DWORD Reserved,			// 保留，必须为0
 	DWORD dwType,			// 值的类型
-	const BYTE * lsendData,		// 指向包含值数据的缓冲区的指针
+	const BYTE* lsendData,	// 指向包含值数据的缓冲区的指针
 	DWORD cbData			// 缓冲区的大小，以字节为单位
 ) {
 	mtx.lock();
-	pData->updateFlag = !pData->updateFlag;
+	GetLocalTime(&(pData->st));
 	pData->type = LOG_CUSTOM;
-	GetLocalTime(&st);
-	sprintf(pData->data, "\n\n******************** [日志] ********************\n");
-	sprintf(pData->data + strlen(pData->data), "RegSetValueExA Hooked\n");
-	sprintf(pData->data + strlen(pData->data), "DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+
+	strcpy(pData->funcName, "RegSetValueExA");
+	pData->argNum = 6;
+
+	strcpy(pData->argName[0], "hKey");
+	strcpy(pData->argName[1], "lpValueName");
+	strcpy(pData->argName[2], "Reserved");
+	strcpy(pData->argName[3], "dwType");
+	strcpy(pData->argName[4], "lsendData");
+	strcpy(pData->argName[5], "cbData");
+
+	sprintf(pData->argData[0], "Addr: 0x%p", hKey);
+	sprintf(pData->argData[1], "Value: %s", lpValueName);
+	sprintf(pData->argData[2], "Value: 0x%x", Reserved);
+	sprintf(pData->argData[3], "Value: 0x%x", dwType);
+	sprintf(pData->argData[4], "Addr: 0x%p", lsendData);
+	sprintf(pData->argData[5], "Value: 0x%x", cbData);
+
+	pData->updateFlag = !pData->updateFlag;
 
 	/*
-	* RegSetValueExA函数：
-	* 设置注册表项下指定值的数据和类型。
-	*/
-
-	// 打印其他参数
 	std::cout << "hKey: " << hKey << std::endl;
 	std::cout << "lpValueName: " << lpValueName << std::endl;
 	std::cout << "Reserved: " << Reserved << std::endl;
 	std::cout << "dwType: " << dwType << std::endl;
 	std::cout << "lsendData: " << lsendData << std::endl;
 	std::cout << "cbData: " << cbData << std::endl;
+	*/
 
-	sprintf(pData->data + strlen(pData->data),  "************************************************\n\n");
-	mtx.unlock();
+	/*
+	* RegSetValueExA函数：
+	* 设置注册表项下指定值的数据和类型。
+	*/
 
 	// 调用RegSetValueExA函数设置指定的注册表项的值，并将返回的状态保存在status变量中
 	auto status = OldRegSetValueExA(hKey, lpValueName, Reserved, dwType, lsendData, cbData);
 
 	// 如果返回值为ERROR_SUCCESS，说明函数成功执行（也就是修改了注册表项的值）
 	if (status == ERROR_SUCCESS) {
-		mtx.lock();
-		pData->updateFlag = !pData->updateFlag;
+		GetLocalTime(&(pData->st));
 		pData->type = LOG_WARNING;
-		sprintf(pData->data, "-------------------- [警告] --------------------\n");
-		sprintf(pData->data + strlen(pData->data), "此程序存在修改注册表项的操作！\n");
-		sprintf(pData->data + strlen(pData->data), "------------------------------------------------\n");
-		mtx.unlock();
+		pData->msgNum = 0;
+		printf("此程序存在修改注册表项的操作！\n");
+		sprintf(pData->message[pData->msgNum++], "此程序存在修改注册表项的操作！");
+		pData->updateFlag = !pData->updateFlag;
 	}
 
+	mtx.unlock();
 	return status;
 }
 
@@ -619,10 +683,13 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 			return EXIT_FAILURE;
 		}
 
-		pData->updateFlag = !pData->updateFlag;
+		GetLocalTime(&(pData->st));
 		pData->type = LOG_INFO;
-		sprintf(pData->data, "行为监测开始。\n");
-		printf("行为监测开始。\n");
+		pData->msgNum = 0;
+		sprintf(pData->message[pData->msgNum++], "行为监测开始。");
+		pData->updateFlag = !pData->updateFlag;
+
+		printf("行为监测开始。");
 
 		DisableThreadLibraryCalls(hModule);
 		DetourTransactionBegin();
@@ -681,7 +748,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 		/*
 		pData->updateFlag = !pData->updateFlag;
 		pData->type = LOG_INFO;
-		sprintf(pData->data, "行为监测结束。\n");
+		sprintf(pData->message, "行为监测结束。\n");
 		printf("行为监测结束。\n");
 
 		// 解除共享内存的映射
