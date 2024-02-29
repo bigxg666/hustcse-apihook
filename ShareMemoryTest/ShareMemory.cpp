@@ -9,10 +9,13 @@ const uint8_t LOG_CUSTOM = 0x00;
 const uint8_t LOG_WARNING = 0x01;
 const uint8_t LOG_ERROR = 0x02;
 
+const uint8_t CTRL_QUIT = 0x10;
+
 const int MAXLEN = 65536;
 
 typedef struct SharedData{
-	uint8_t type;
+	int cnt = 0;
+	uint8_t type = 0;
 	char data[MAXLEN];
 }SharedData;
 
@@ -33,17 +36,24 @@ int main() {
         CloseHandle(hSharedMemory);
         return 1;
     }
+	
+	SharedData* pData = static_cast<SharedData*>(pSharedMemory);
 
     // 将数据写入共享内存
-    SharedData* pData = static_cast<SharedData*>(pSharedMemory);
-    pData->type = LOG_WARNING;
-	sprintf(pData->data, "****************************************\n");
-	sprintf((pData->data) + strlen(pData->data), "RegCreateKeyExA Hooked\n");
-	sprintf((pData->data) + strlen(pData->data), "此程序存在新增注册表项操作\n");
-	sprintf((pData->data) + strlen(pData->data), "此程序存在修改注册表自启动项的操作\n");
-	strncpy((pData->data) + strlen(pData->data), "****************************************", sizeof(pData->data));
-
-	while(true);
+	while(true){
+		system("pause");
+		pData->cnt++;
+		pData->cnt %= INT_MAX;
+		
+		pData->type++;
+		pData->type %= 3;
+		
+		sprintf(pData->data, "****************************************\n");
+		sprintf((pData->data) + strlen(pData->data), "RegCreateKeyExA Hooked\n");
+		sprintf((pData->data) + strlen(pData->data), "此程序存在新增注册表项操作\n");
+		sprintf((pData->data) + strlen(pData->data), "此程序存在修改注册表自启动项的操作\n");
+		strncpy((pData->data) + strlen(pData->data), "****************************************", sizeof(pData->data));
+	}
 	
     // 解除共享内存的映射
     UnmapViewOfFile(pSharedMemory);
