@@ -18,23 +18,23 @@ int main() {
 	printf("创建注册表项\n");
 	auto res = RegCreateKeyExA(HKEY_LOCAL_MACHINE, keyname, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hk, NULL);
 
-	system("pause");
+	// system("pause");
 	printf("关闭注册表项\n");
 	RegCloseKey(hk);
 
-	system("pause");
+	// system("pause");
 	printf("打开注册表项\n");
 	RegOpenKeyExA(HKEY_LOCAL_MACHINE, keyname, 0, KEY_ALL_ACCESS, &hk2);
 
-	system("pause");
+	// system("pause");
 	printf("修改注册表项的值\n");
 	RegSetValueExA(hk2, "Hello", 0, REG_SZ, (PBYTE)"Hello HUST", 11);
 
-	system("pause");
+	// system("pause");
 	printf("查询注册表项的值\n");
 	RegQueryValueExA(hk2, "Hello", NULL, &dwType, (BYTE*)buffer, &dwLen);
 
-	system("pause");
+	// system("pause");
 	printf("关闭注册表项\n");
 	RegCloseKey(hk2);
 
@@ -43,23 +43,23 @@ int main() {
 	dwType = REG_SZ;
 	dwLen = 256;
 
-	system("pause");
+	// system("pause");
 	printf("在注册表中创建开机启动项\n");
 	res = RegCreateKeyExA(HKEY_LOCAL_MACHINE, keyname, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hk, NULL);
 
-	system("pause");
+	// system("pause");
 	printf("关闭注册表项\n");
 	RegCloseKey(hk);
 
-	system("pause");
+	// system("pause");
 	printf("打开注册表项\n");
 	RegOpenKeyExA(HKEY_LOCAL_MACHINE, keyname, 0, KEY_ALL_ACCESS, &hk2);
 
-	system("pause");
+	// system("pause");
 	printf("修改注册表项的值\n");
 	RegSetValueExA(hk2, "Hello", 0, REG_SZ, (PBYTE)"Hello HUST", 11);
 
-	system("pause");
+	// system("pause");
 	printf("关闭注册表项\n");
 	RegCloseKey(hk2);
 

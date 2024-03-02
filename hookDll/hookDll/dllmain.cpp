@@ -17,7 +17,7 @@
 #include <ws2tcpip.h>
 
 #pragma comment(lib, "detours.lib")
-#pragma comment(lib,"ws2_32.lib")
+#pragma comment(lib, "ws2_32.lib")
 
 const BYTE LOG_UNINIT = 0xFF;
 
@@ -28,28 +28,35 @@ const BYTE LOG_ERROR = 0x03;
 
 const BYTE CTRL_QUIT = 0x10;
 
-const int MAX_MSG_NUM = 16;				// 同一时刻最多提供16条提示信息
-const int MAX_MSG_LEN = 512;			// 消息的最大长度
+const int MAX_CNT_NUM = UINT8_MAX;		// 日志表的表长
+
+const int MAX_MSG_LEN = 512;			// 提示信息的最大长度
 
 const int MAX_FUNCNAME_LEN = 128;		// 函数名最大支持128字节
 const int MAX_ARG_NUM = 16;				// 最多支持16个参数
 const int MAX_ARGNAME_LEN = 128;		// 每个参数的名称最大支持128字节
 const int MAX_ARGDATA_LEN = 512;		// 每个参数的数据最大支持512字节
 
-typedef struct SharedData {
-	bool updateFlag = false;			// 更新标志
+// 日志信息结构体
+typedef struct LogInfo {
+	uint8_t cnt = 0;					// 记录在日志表中的下标
 
 	SYSTEMTIME st;						// 系统时间
 	BYTE type = 0xFF;					// 日志类型
 
-	BYTE msgNum = 0;										// 同一时刻提供的提示信息数量
-	char message[MAX_MSG_NUM][MAX_MSG_LEN] = {};			// 提示信息
+	char message[MAX_MSG_LEN] = {};		// 提示信息
 
 	// 以下内容仅在type为LOG_CUSTOM时有效
-	char funcName[MAX_FUNCNAME_LEN] = {};					// Hook到的函数名
-	BYTE argNum = 0;										// 参数个数
-	char argName[MAX_ARG_NUM][MAX_ARGNAME_LEN] = {};		// 参数名称表
-	char argData[MAX_ARG_NUM][MAX_ARGDATA_LEN] = {};		// 参数数据表
+	char funcName[MAX_FUNCNAME_LEN] = {};				// Hook到的函数名
+	BYTE argNum = 0;									// 参数个数
+	char argName[MAX_ARG_NUM][MAX_ARGNAME_LEN] = {};	// 参数名称表
+	char argData[MAX_ARG_NUM][MAX_ARGDATA_LEN] = {};	// 参数数据表
+}LogInfo;
+
+// 共享变量结构体
+typedef struct SharedData {
+	uint8_t cnt = 0;									// 记录日志表中信息的个数
+	LogInfo logInfoList[MAX_CNT_NUM] = {};				// 日志表
 }SharedData;
 
 std::mutex mtx;							// 信号量
@@ -61,8 +68,18 @@ HANDLE hSharedMemory = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWR
 // 将共享内存映射到当前进程的地址空间
 LPVOID pSharedMemory = MapViewOfFile(hSharedMemory, FILE_MAP_WRITE, 0, 0, 0);
 
-// 使用指针pData指向共享内存区域
-SharedData* pData = static_cast<SharedData*>(pSharedMemory);
+// 使用指针pSharedData指向共享内存区域
+SharedData* pSharedData = static_cast<SharedData*>(pSharedMemory);
+
+uint8_t cnt = 0;										// 日志表的下标
+LogInfo* pData = &(pSharedData->logInfoList[0]);		// 当前日志结构
+
+void update() {
+	cnt++;
+	cnt %= MAX_CNT_NUM;
+	pSharedData->cnt = cnt;								// 更新日志表中信息的个数
+	pData = &(pSharedData->logInfoList[cnt]);			// 令pData指向下一个日志表项
+}
 
 /*
 * 实现文件操作监控
@@ -442,7 +459,8 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegCreateKeyExA(
 	sprintf(pData->argData[7], "Addr: 0x%p", phkResult);
 	sprintf(pData->argData[8], "Addr: 0x%p", lpdwDisposition);
 
-	pData->updateFlag = !pData->updateFlag;					// 更新共享变量，使ReadLog程序监测到更新并展示信息
+	// 消息输出完毕后一定要调用update函数使全局变量cnt自增，并使pData指针指向下一个表项
+	update();
 
 	/*
 	std::cout << "hKey: " << hKey << std::endl;
@@ -464,33 +482,32 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegCreateKeyExA(
 
 	// RegOpenKeyExA函数：打开一个已存在的注册表项，返回值为ERROR_SUCCESS表示打开成功。
 	// 调用RegOpenKeyExA函数打开指定的注册表项
+
+	// 返回值不为ERROR_SUCCESS，说明指定的注册表项在函数调用的时候并不存在，因此认为程序存在新增注册表项操作
 	auto judge = OldRegOpenKeyExA(hKey, lpSubKey, 0, samDesired, phkResult);
+	if (judge != ERROR_SUCCESS) {
+		GetLocalTime(&(pData->st));
+		pData->type = LOG_WARNING;
+		printf("此程序存在新增注册表项操作！\n");
+		sprintf(pData->message, "此程序存在新增注册表项操作！");
+		update();
+	}
 
 	// RegCreateKeyExA函数：创建指定的注册表项。如果该项已存在，函数将打开它。
 	// 调用RegCreateKeyExA函数创建或打开指定的注册表项
 	auto status = OldRegCreateKeyExA(hKey, lpSubKey, Reserved, lpClass, dwOptions, samDesired, lpSecurityAttributes, phkResult, lpdwDisposition);
 
-	if (judge != ERROR_SUCCESS || strcmp(lpSubKey, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run") == 0) {
+	/*
+	* SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run是一个特殊的注册表项。
+	* 这个注册表项包含了一系列的键值对，每一个键值对都对应一个需要在系统启动时自动运行的程序。
+	*/
+	// 对比打开的子键名称。若子键为"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"，则说明程序很有可能要修改自启动项。
+	if (strcmp(lpSubKey, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run") == 0) {
 		GetLocalTime(&(pData->st));
 		pData->type = LOG_WARNING;
-		pData->msgNum = 0;
-		if (judge != ERROR_SUCCESS) {
-			// 返回值不为ERROR_SUCCESS，说明指定的注册表项在函数调用的时候并不存在，因此认为程序存在新增注册表项操作
-			printf("此程序存在新增注册表项操作！\n");
-			sprintf(pData->message[pData->msgNum++], "此程序存在新增注册表项操作！");
-		}
-
-		/*
-		* SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run是一个特殊的注册表项。
-		* 这个注册表项包含了一系列的键值对，每一个键值对都对应一个需要在系统启动时自动运行的程序。
-		*/
-		if (strcmp(lpSubKey, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run") == 0) {
-			// 对比打开的子键名称。若子键为"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"，则说明程序很有可能要修改自启动项。
-			printf("此程序存在修改注册表自启动项的操作！\n");
-			sprintf(pData->message[pData->msgNum++], "此程序存在修改注册表自启动项的操作！");
-		}
-		
-		pData->updateFlag = !pData->updateFlag;
+		printf("此程序存在修改注册表自启动项的操作！\n");
+		sprintf(pData->message, "此程序存在修改注册表自启动项的操作！");
+		update();
 	}
 
 	mtx.unlock();
@@ -524,7 +541,7 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegOpenKeyExA(
 	sprintf(pData->argData[3], "Value: 0x%x", samDesired);
 	sprintf(pData->argData[4], "Addr: 0x%p", phkResult);
 
-	pData->updateFlag = !pData->updateFlag;
+	update();
 
 	/*
 	std::cout << "hKey: " << hKey << std::endl;
@@ -553,7 +570,7 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegCloseKey(
 
 	sprintf(pData->argData[0], "Addr: 0x%p", hKey);
 
-	pData->updateFlag = !pData->updateFlag;
+	update();
 
 	/*
 	std::cout << "hKey: " << hKey << std::endl;
@@ -593,7 +610,7 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegQueryValueExA(
 	sprintf(pData->argData[4], "Addr: 0x%p", lsendData);
 	sprintf(pData->argData[5], "Addr: 0x%p", lpcbData);
 
-	pData->updateFlag = !pData->updateFlag;
+	update();
 
 	/*
 	std::cout << "hKey: " << hKey << std::endl;
@@ -638,7 +655,7 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegSetValueExA(
 	sprintf(pData->argData[4], "Addr: 0x%p", lsendData);
 	sprintf(pData->argData[5], "Value: 0x%x", cbData);
 
-	pData->updateFlag = !pData->updateFlag;
+	update();
 
 	/*
 	std::cout << "hKey: " << hKey << std::endl;
@@ -661,10 +678,9 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegSetValueExA(
 	if (status == ERROR_SUCCESS) {
 		GetLocalTime(&(pData->st));
 		pData->type = LOG_WARNING;
-		pData->msgNum = 0;
 		printf("此程序存在修改注册表项的操作！\n");
-		sprintf(pData->message[pData->msgNum++], "此程序存在修改注册表项的操作！");
-		pData->updateFlag = !pData->updateFlag;
+		sprintf(pData->message, "此程序存在修改注册表项的操作！");
+		update();
 	}
 
 	mtx.unlock();
@@ -818,9 +834,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
 		GetLocalTime(&(pData->st));
 		pData->type = LOG_INFO;
-		pData->msgNum = 0;
-		sprintf(pData->message[pData->msgNum++], "行为监测开始。");
-		pData->updateFlag = !pData->updateFlag;
+		sprintf(pData->message, "行为监测开始。");
+		update();
 
 		printf("行为监测开始。");
 
