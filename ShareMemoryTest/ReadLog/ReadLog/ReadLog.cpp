@@ -86,23 +86,29 @@ int main() {
 		// 把没有输出的消息全部输出
 		while (cnt != pSharedData->cnt) {
 			if (pData->type == LOG_CUSTOM) {
-				// 设置文本颜色为黄色
-				SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
+				// 设置文本颜色为白色
+				SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 				printf("[%d-%d-%d %02d: %02d: %02d: %03d] ", pData->st.wYear, pData->st.wMonth, pData->st.wDay, pData->st.wHour, pData->st.wMinute, pData->st.wSecond, pData->st.wMilliseconds);
 				printf("[截获] 该程序使用了函数: %s \n", pData->funcName);
 				for (int i = 0; i < pData->argNum; i++) {
 					std::cout << "\t参数名: " << pData->argName[i] << ", 内容-" << pData->argData[i] << std::endl;
 				}
 			}
-			if (pData->type == LOG_WARNING) {
+			if (pData->type == LOG_ERROR) {
 				// 设置文本颜色为红色
 				SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
+				printf("[%d-%d-%d %02d: %02d: %02d: %03d] ", pData->st.wYear, pData->st.wMonth, pData->st.wDay, pData->st.wHour, pData->st.wMinute, pData->st.wSecond, pData->st.wMilliseconds);
+				printf("[错误] %s\n", pData->message);
+			}
+			if (pData->type == LOG_WARNING) {
+				// 设置文本颜色为黄色
+				SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
 				printf("[%d-%d-%d %02d: %02d: %02d: %03d] ", pData->st.wYear, pData->st.wMonth, pData->st.wDay, pData->st.wHour, pData->st.wMinute, pData->st.wSecond, pData->st.wMilliseconds);
 				printf("[警告] %s\n", pData->message);
 			}
 			if (pData->type == LOG_INFO) {
-				// 设置文本颜色为白色
-				SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+				// 设置文本颜色为绿色
+				SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
 				printf("[%d-%d-%d %02d: %02d: %02d: %03d] ", pData->st.wYear, pData->st.wMonth, pData->st.wDay, pData->st.wHour, pData->st.wMinute, pData->st.wSecond, pData->st.wMilliseconds);
 				printf("[信息] %s\n", pData->message);
 			}
