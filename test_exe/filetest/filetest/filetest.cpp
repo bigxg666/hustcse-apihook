@@ -1,16 +1,21 @@
 ﻿#include <windows.h>
 #include <iostream>
 
+#define PATH "C:\\Users\\Leo\\test.txt"
+#define L_PATH L"C:\\Users\\Leo\\test.txt"
+#define COPY_DST "a.txt"
+#define L_COPY_DST L"a.txt"
+
 int main() {
-	// 测试 CreateFile 函数，注意更改路径
-	HANDLE hFile = CreateFile(TEXT("C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\test_exe\\filetest.txt"), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	// 测试 CreateFile 函数
+	HANDLE hFile = CreateFile(TEXT(PATH), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (hFile == INVALID_HANDLE_VALUE) {
 		std::cerr << "Failed to create file. Error code: " << GetLastError() << std::endl;
 		return 1;
 	}
 	std::cout << "Test program: File created successfully." << std::endl;
 
-	// 测试读写文件
+	// 测试写文件
 	char buffer[100] = "Hello, World!";
 	DWORD bytesWritten;
 	if (!WriteFile(hFile, buffer, sizeof(buffer), &bytesWritten, NULL)) {
@@ -37,8 +42,30 @@ int main() {
 	}
 	std::cout << "Test program: File handle closed." << std::endl;
 
+
+	//复制文件
+	CopyFile(L_PATH, L_COPY_DST, FALSE);
+
+	//用CreateFile来打开a.txt文件
+	HANDLE hFileA = CreateFile(TEXT(COPY_DST), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+	//测试操作范围是否有多个文件夹，与前面的文件夹路径要不同
+	if (!ReadFile(hFileA, readBuffer, sizeof(readBuffer), &bytesRead, NULL)) {
+		std::cerr << "Failed to read from file. Error code: " << GetLastError() << std::endl;
+		CloseHandle(hFileA);
+		return 1;
+	}
+
+	/*
+	if (!WriteFile(hFileA, buffer, sizeof(buffer), &bytesWritten, NULL)) {
+		std::cerr << "Failed to write to file. Error code: " << GetLastError() << std::endl;
+		CloseHandle(hFileA);
+		return 1;
+	}
+	*/
+
 	// 删除文件
-	if (!DeleteFile(TEXT("C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\test_exe\\filetest.txt"))) {
+	if (!DeleteFile(TEXT(PATH))) {
 		std::cerr << "Failed to delete file. Error code: " << GetLastError() << std::endl;
 		return 1;
 	}

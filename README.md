@@ -1,50 +1,188 @@
-# HUSECSE-APIHOOK
+# HUSTCSE-APIHOOK
 
-#### 介绍
-信安2104
+## 介绍
 
-#### 软件架构
-Detours-main: Detours库的源码  
-Detours: 编译好的Detours库  
-Dll1: 测试用Dll  
-FCInject: 注入程序  
-FileDll: 文件操作行为监测  
-heapDll: 堆操作行为监测  
-RegDll: 注册表相关行为监测  
-hookDll: 总的行为监测Dll,  **能够向共享内存中写入日志**   
-ShareMemoryTest: 共享内存测试  
-&emsp; **ReadLog: 从共享内存中读取日志并显示**   
-test_exe: 测试程序（包含源码）  
-&emsp;filetest: 文件行为测试程序  
-&emsp;heaptest: 文件行为测试程序  
-&emsp;regtest: 注册表等行为测试程序  
+2024春 HUST CSE 软件安全课程设计 基于 API HOOK 的软件行为分析系统
 
-#### 安装教程
+## 环境配置
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+### 开发环境
 
-#### 使用说明
++ Visual Studio 2022（x64）
+
+### 依赖库
+
++ [Detours](https://github.com/Microsoft/Detours)（x64）
++ Qt
+
+## 项目架构
+
+### 依赖库的源码
+
++ Detours-main: Detours库的源码
++ Detours: 编译好的Detours库（x64）
+
+### Hook Dll
+
++ Dll1: 测试用Dll
+  + 通过编译和运行实验指导书最后的代码，理解Hook Dll的基本原理。
++ FileDll: 文件操作行为监测
++ heapDll: 堆操作行为监测
++ RegDll: 注册表相关行为监测
++ networkDll: 网络相关行为监测
++ hookDll: 总的行为监测Dll
+  + 将所有行为监测Dll汇总为一个Dll，并且**能够向共享内存中写入日志**，以便日志显示程序读取日志。
+
+### 注入程序
+
++ FCInject: 测试用注入程序
+  + 参考自实验指导书
+
+### 日志显示程序
+
++ ShareMemoryTest: 共享内存测试
+  + rwtest: 测试共享内存的读写
+    + ShareMemory.cpp: 测试共享内存的写入
+    + ReadShareMemory.cpp: 测试共享内存的读取
+  + ReadLog: 从共享内存中读取日志并显示
+
+### 测试程序
+
++ test_exe: 测试程序（包含源码）
+  + filetest: 文件行为测试程序
+  + heaptest: 文件行为测试程序
+  + regtest: 注册表等行为测试程序
+  + networktest_client: 网络行为测试程序-客户端
+  + networktest_server: 网络行为测试程序-服务端
++ testCode: 总的测试程序，将所有测试程序汇总为一个程序
+
+## 使用教程  
+
+### 测试阶段
+
+1. 在Visual Studio上配置Detours库。
+2. 编译测试程序，产生可执行程序。
+3. 在注入程序中修改Hook Dll和待监测程序的绝对路径，编译并运行注入程序FCInject。
+4. 编译并运行日志显示程序ReadLog，此时日志显示程序就会在控制台打印出相关日志信息。
+
+### 正式阶段
+
+1. xxxx
+2. xxxx
+
+## 特别说明
 
 1. ~~由于Dll向共享内存写入数据需要时间，因此当测试程序在短时间内进行大量操作时，ReadLog模块将无法全部将操作显示出来。在设计测试程序时需要注意在不同操作之间**增加停顿**或是**sleep**。~~  
  **优化**：通过修改共享变量的数据结构，**为共享变量设置缓冲区**，在每次读取共享变量时，把上次读取和本次读取的时间间隔内，缓冲区中新增的所有日志消息全都显示出来，**无需再考虑测试程序在短时间内进行大量操作的问题**。
-2. 在进行网络部分测试的时候需要并行运行测试服务器（networktest_server用于发送数据）和测试客户端（networktest_client用于接收数据）
-3.  xxxx
+2. 需要**先运行注入程序**，Dll会在内存中建立一块共享内存区域，然后**再运行日志显示程序**，日志显示程序才能打开共享内存。
+3. 在进行网络部分测试的时候需要并行运行测试服务器（networktest_server用于发送数据）和测试客户端（networktest_client用于接收数据）。
+4. xxxx
 
-#### 参与贡献
+## 课程设计任务与要求
 
-1.  Fork 本仓库
-2.  新建 Feat_xxx 分支
-3.  提交代码
-4.  新建 Pull Request
++ 对于无源码情况下分析样本程序的行为，有多种方法。本次课程设计是利用Detours开源项目包提供的接口，完成基本的程序行为分析。具体课程设计任务见表1。任务主要分为API调用截获及分析两大部分。任务可以自己选择Windows（含Win7/win8/win10）平台上实现，编程用语言为C或者C++。其中使用的Windows平台使用微软的Detours开源库，可以在VS2019环境下编译后使用，后面会有详细介绍。  
++ 平台：Win7/Win8/Win10, VC++(VS2013/VS2015/VS2019)。
+
+### 1. 实现基本的第三方进程 Windows API 截获框架 【未完成】
+
+1. 编译生成Detours库 【完成于文件夹“Detours”中】
+2. 完成挂钩框架DLL，实现对MessageBox调用截获，能打印出调用的参数、进程名称以及进程exe文件信息 **【进程名称以及进程exe文件信息尚未完成】**
+3. 自编或者利用已有恶意代码样例（包含弹出对话框动作）
+4. 完成注入动作开启和关闭的“注射器”控制程序 【完成于项目“FCInject”中】
+
+### 2. 实现堆操作 API 截获 【已完成】
+
+实现堆操作（创建，释放）API进行截获，打印出所有参数信息。
+
+### 3. 实现文件操作 API 截获 【已完成】
+
+实现对文件操作（创建，关闭，读写）API进行截获，打印出所有参数信息。
+
+### 4. 注册表操作 API 截获 【已完成】
+
+实现对注册表操作（创建，关闭，读写）API进行截获，打印出所有参数信息。
+
+### 5. 堆操作异常行为分析
+
+设计并完成算法，记录并给出提示：
+
+1. 检测堆申请与释放是否一致（正常）
+2. 是否发生重复的多次释放（异常）
+
+### 6. 文件操作异常行为分析
+
+设计并完成算法，记录并给出提示：
+
+1. 判断操作范围是否有多个文件夹
+2. 是否存在自我复制的情况
+3. 是否修改了其它可执行代码包括exe，dll，ocx等
+4. 是否将文件内容读取后发送到网络（选做）
+
+### 7. 注册表操作异常行为分析
+
+设计并完成算法，记录并给出提示：
+
+1. 判断是否新增注册表项并判断是否为自启动执行文件项；
+2. 是否修改了注册表；
+3. 输出所有的注册表操作项；
+
+### 8. 提供系统界面
+
+所设计实现的功能，有图形界面展示  
+【完成于项目“ReadLog”】  
+【待完善】
+
+### 9. 行为检测样本库
+
+提供5个待检测的可能存在恶意的exe样本  
+【测试于项目“test_exe”】  
+【完成于项目“testCode”】  
+【待完善】
+
+### 10. 项目开源
+
+在Gitee平台上开源各自完成的行为分析系统，小组成员通过Gitee协同开发
+
+### 11. 项目文档撰写
+
+在开源项目中编写项目构建与使用文档
+
+### 12. 在指定的开源仓库完成开源贡献
+
+在以下开源仓库中提交PR：
+
+1. Gitee的HustDetours（待公布具体网址）
+2. [软件安全课程平台的基础架构仓库](https://github.com/HUSTSeclab/dojo)
+3. [理论课实验课实验仓库](https://github.com/HUSTSeclab/software-security-dojo)
+
+### 13. 网络通信操作异常行为分析（选做）
+
+设计并完成算法，记录并给出提示：
+
+1. 实现对网络传输SOCKET操作（连接、发送与接收）API的截获
+2. 打印进程连接端口、协议类型、IP信息
+3. HTTP连接协议的解析，判断传输的内容是否为明文
+
+### 14. 内存拷贝监测与关联分析（选做）
+
+设计并完成算法，记录并给出提示：
+
+1. 能够输出内存拷贝信息，并分析拷贝的内容流向。
 
 
-#### 特技
 
-1.  使用 Readme\_XXX.md 来支持不同的语言，例如 Readme\_en.md, Readme\_zh.md
-2.  Gitee 官方博客 [blog.gitee.com](https://blog.gitee.com)
-3.  你可以 [https://gitee.com/explore](https://gitee.com/explore) 这个地址来了解 Gitee 上的优秀开源项目
-4.  [GVP](https://gitee.com/gvp) 全称是 Gitee 最有价值开源项目，是综合评定出的优秀开源项目
-5.  Gitee 官方提供的使用手册 [https://gitee.com/help](https://gitee.com/help)
-6.  Gitee 封面人物是一档用来展示 Gitee 会员风采的栏目 [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+## 参与贡献
+
+1. Fork 本仓库
+2. 新建 Feat_xxx 分支
+3. 提交代码
+4. 新建 Pull Request
+
+## 特技
+
+1. 使用 Readme\_XXX.md 来支持不同的语言，例如 Readme\_en.md, Readme\_zh.md
+2. Gitee 官方博客 [blog.gitee.com](https://blog.gitee.com)
+3. 你可以 [https://gitee.com/explore](https://gitee.com/explore) 这个地址来了解 Gitee 上的优秀开源项目
+4. [GVP](https://gitee.com/gvp) 全称是 Gitee 最有价值开源项目，是综合评定出的优秀开源项目
+5. Gitee 官方提供的使用手册 [https://gitee.com/help](https://gitee.com/help)
+6. Gitee 封面人物是一档用来展示 Gitee 会员风采的栏目 [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)

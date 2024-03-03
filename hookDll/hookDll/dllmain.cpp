@@ -9,15 +9,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <Windows.h>
-#include <iostream>
-#include <sstream>
-#include <unordered_set>
-#include <mutex>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <set>
+#include <unordered_set>
+#include <mutex>
+
 #pragma comment(lib, "detours.lib")
 #pragma comment(lib, "ws2_32.lib")
+
+
 
 const BYTE LOG_UNINIT = 0xFF;
 
@@ -59,9 +64,6 @@ typedef struct SharedData {
 	LogInfo logInfoList[MAX_CNT_NUM] = {};				// 日志表
 }SharedData;
 
-std::mutex mtx;							// 信号量
-SYSTEMTIME st;
-
 // 创建共享内存对象
 HANDLE hSharedMemory = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, sizeof(SharedData), L"MySharedMemory");
 
@@ -74,6 +76,8 @@ SharedData* pSharedData = static_cast<SharedData*>(pSharedMemory);
 uint8_t cnt = 0;										// 日志表的下标
 LogInfo* pData = &(pSharedData->logInfoList[0]);		// 当前日志结构
 
+// 更新共享变量相关信息
+// 每输出一条共享日志信息之后都要调用一次该函数
 void update() {
 	cnt++;
 	cnt %= MAX_CNT_NUM;
@@ -81,9 +85,70 @@ void update() {
 	pData = &(pSharedData->logInfoList[cnt]);			// 令pData指向下一个日志表项
 }
 
+
+
+// 文件信息结构体
+typedef struct FileData {
+	std::string filename;				// 完整文件名
+	std::string folderPath;				// 文件夹路径
+	std::string fileExtension;			// 文件扩展名
+}FileData;
+std::set<std::string> accessedFolders;	// 存储已经访问过的文件夹路径
+
+// 获取文件夹路径及文件后缀等信息
+FileData GetFileData(HANDLE hFile) {
+	FileData result;
+
+	// 会引起CreateFile操作，但在NewCreateFile函数中进行了过滤
+	TCHAR szFileName[MAX_PATH];
+	if (GetFinalPathNameByHandle(hFile, szFileName, MAX_PATH, FILE_NAME_NORMALIZED) != 0) {
+		std::wstring wsFileName(szFileName);
+		std::string fileName(wsFileName.begin(), wsFileName.end());
+		result.filename = fileName;
+		// 去除路径前缀 \\?\ 
+		if (result.filename.substr(0, 4) == "\\\\?\\") {
+			result.filename = result.filename.substr(4);
+		}
+		
+		// 从文件名中提取文件扩展名
+		size_t dotPos = result.filename.find_last_of('.');
+		if (dotPos != std::string::npos) {
+			result.fileExtension = result.filename.substr(dotPos);
+		}
+		else {
+			std::cout << "Unable to extract the file extension." << std::endl;
+		}
+
+		// 获取文件夹路径
+		size_t found = result.filename.find_last_of("\\/");
+		if (found != std::string::npos) {
+			result.folderPath = result.filename.substr(0, found);
+			// 将文件夹路径添加到已访问文件夹集合中
+			accessedFolders.insert(result.folderPath);
+			// 打印访问过的文件夹
+			// std::cout << "Folder path: " << result.folderPath << std::endl;
+		}
+		else {
+			std::cout << "Unable to extract the folder path." << std::endl;
+		}
+	}
+	else {
+		std::cout << "Unable to get the file name." << std::endl;
+	}
+	return result;
+}
+
+
+
+// 全局变量定义
+std::mutex mtx;							// 信号量
+SYSTEMTIME st;							// 系统时间
+
+
+
 /*
 * 实现文件操作监控
-* OpenFile CreateFile ReadFile WriteFile
+* CreateFile CloseHandle ReadFile WriteFile DeleteFile CopyFile
 */
 
 // 创建文件
@@ -106,6 +171,37 @@ extern "C" __declspec(dllexport) HANDLE WINAPI NewCreateFile(
 	DWORD dwFlagsAndAttributes,					// 文件属性
 	HANDLE hTemplateFile						// 模板文件句柄
 ) {
+	if (wcsstr(lpFileName, L"log") != nullptr || wcsstr(lpFileName, L".config") != nullptr || wcsstr(lpFileName, L"MountPointManage") != nullptr) {
+		// 如果包含需要过滤的字符串，则直接返回原函数
+		return OldCreateFile(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+	}
+
+	mtx.lock();
+	GetLocalTime(&(pData->st));
+	pData->type = LOG_CUSTOM;
+
+	strcpy(pData->funcName, "CreateFile");
+	pData->argNum = 7;
+
+	strcpy(pData->argName[0], "lpFileName");
+	strcpy(pData->argName[1], "dwDesiredAccess");
+	strcpy(pData->argName[2], "dwShareMode");
+	strcpy(pData->argName[3], "lpSecurityAttributes");
+	strcpy(pData->argName[4], "dwCreationDisposition");
+	strcpy(pData->argName[5], "dwFlagsAndAttributes");
+	strcpy(pData->argName[6], "hTemplateFile");
+
+	sprintf(pData->argData[0], "Value: %s", lpFileName);
+	sprintf(pData->argData[1], "Value: 0x%x", dwDesiredAccess);
+	sprintf(pData->argData[2], "Value: 0x%x", dwShareMode);
+	sprintf(pData->argData[3], "Addr: 0x%p", lpSecurityAttributes);
+	sprintf(pData->argData[4], "Value: 0x%x", dwCreationDisposition);
+	sprintf(pData->argData[5], "Value: 0x%x", dwFlagsAndAttributes);
+	sprintf(pData->argData[6], "Addr: 0x%p", hTemplateFile);
+
+	update();
+
+	/*
 	printf("\n\n******************************************\n");
 	printf("CreateFile Hooked\n");
 	GetLocalTime(&st);
@@ -114,9 +210,8 @@ extern "C" __declspec(dllexport) HANDLE WINAPI NewCreateFile(
 	int num = WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, NULL, 0, NULL, FALSE);
 	char* pchar = new char[num];
 	WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, pchar, num, NULL, FALSE);
-	delete[] pchar;								// 注意释放内存，否则造成内存泄漏！
 
-	std::cout << "lpFileName: " << std::endl;
+	std::cout << "lpFileName: " << pchar << std::endl;
 	std::cout << "dwDesiredAccess: 0x" << std::hex << dwDesiredAccess << std::endl;
 	std::cout << "dwShareMode: 0x" << std::hex << dwShareMode << std::endl;
 	std::cout << "lpSecurityAttributes: 0x" << std::hex << lpSecurityAttributes << std::endl;
@@ -125,6 +220,10 @@ extern "C" __declspec(dllexport) HANDLE WINAPI NewCreateFile(
 	std::cout << "hTemplateFile: 0x" << std::hex << hTemplateFile << std::endl;
 
 	printf("******************************************\n\n");
+	*/
+
+	mtx.unlock();
+	// delete[] pchar;
 	return OldCreateFile(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 }
 
@@ -132,37 +231,58 @@ extern "C" __declspec(dllexport) HANDLE WINAPI NewCreateFile(
 static BOOL(WINAPI* OldCloseHandle)(HANDLE hObject) = CloseHandle;
 
 extern "C" __declspec(dllexport) BOOL WINAPI NewCloseHandle(HANDLE hObject) {
-	
+
 	/*
 	* 注意先使用GetFileType获取句柄的类型
 	* 然后再使用OldCloseHandle关闭句柄
 	* 关闭句柄之后就不能获取句柄类型了
 	*/
 	DWORD fileType = GetFileType(hObject);
-	BOOL result = OldCloseHandle(hObject);
-
+	BOOL result = FALSE;
 	/*
 	* CloseHandle函数可以关闭多种句柄，如文件、进程、管道等
 	* 建议增加条件判断，当关闭的句柄为磁盘文件类型时，再输出相关信息
 	* 否则会因为输出的无用信息过多，干扰判断
-	*/ 
+	*/
 	if (fileType == FILE_TYPE_DISK) {
+		FileData myFile = GetFileData(hObject);	// 要在关闭句柄之前进行
+
+		mtx.lock();
+		GetLocalTime(&(pData->st));
+		pData->type = LOG_CUSTOM;
+
+		strcpy(pData->funcName, "CloseHandle");
+		pData->argNum = 1;
+
+		strcpy(pData->argName[0], "hObject");
+
+		sprintf(pData->argData[0], "Addr: 0x%p", hObject);
+
+		update();
+
+		/*
+
 		printf("\n\n******************************************\n");
 		printf("Close DiskFile Handle Hooked\n");
 		GetLocalTime(&st);
 		printf("DLL日志输出:%d-%d-%d %02d: %02d: %02d: %03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
-		std::cout << "Handle being closed: 0x" << hObject << std::endl;
+		std::cout << "DiskFile being closed: " << myFile.filename << std::endl;
 
+		result = OldCloseHandle(hObject);
 		if (result) {
-			std::cout << "Handle closed successfully" << std::endl;
+			std::cout << "DiskFile closed successfully" << std::endl;
 		}
 		else {
-			std::cout << "Failed to close handle. Error code: " << GetLastError() << std::endl;
+			std::cout << "Failed to close DiskFile. Error code: " << GetLastError() << std::endl;
 		}
 
 		printf("******************************************\n\n");
+		*/
+
+		mtx.unlock();
 	}
+
 	return result;
 }
 
@@ -171,26 +291,54 @@ static BOOL(WINAPI* OldReadFile)(
 	HANDLE       hFile,                         // 文件句柄 
 	LPVOID       lpBuffer,                      // 读取文件数据存储的内存缓冲区
 	DWORD        nNumberOfBytesToRead,          // 要读取的最多字节数
-	LPDWORD      lpNumberOfBytesRead,
-	LPOVERLAPPED lpOverlapped
+	LPDWORD      lpNumberOfBytesRead,           // 实际读取到的字节数
+	LPOVERLAPPED lpOverlapped                   // OVERLAPPED 结构，一般设定为 NULL 
 	) = ReadFile;
 
 extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 	HANDLE       hFile,                         // 文件句柄 
 	LPVOID       lpBuffer,                      // 读取文件数据存储的内存缓冲区
 	DWORD        nNumberOfBytesToRead,          // 要读取的最多字节数
-	LPDWORD      lpNumberOfBytesRead,
-	LPOVERLAPPED lpOverlapped
+	LPDWORD      lpNumberOfBytesRead,           // 实际读取到的字节数
+	LPOVERLAPPED lpOverlapped                   // OVERLAPPED 结构，一般设定为 NULL 
 ) {
 	/*
 	* 增加条件判断，使得仅监测磁盘文件的读取
 	* 否则将会出现大量无用信息
-	*/ 
+	*/
 	if (GetFileType(hFile) == FILE_TYPE_DISK) {
+		FileData myFile = GetFileData(hFile);
+
+		mtx.lock();
+		GetLocalTime(&(pData->st));
+		pData->type = LOG_CUSTOM;
+
+		strcpy(pData->funcName, "ReadFile");
+		pData->argNum = 6;
+
+		// 加一个读取文件的文件名
+		strcpy(pData->argName[0], "fileName");
+		strcpy(pData->argName[1], "hFile");
+		strcpy(pData->argName[2], "lpBuffer");
+		strcpy(pData->argName[3], "nNumberOfBytesToRead");
+		strcpy(pData->argName[4], "lpNumberOfBytesRead");
+		strcpy(pData->argName[5], "lpOverlapped");
+
+		sprintf(pData->argData[0], "Value: %s", myFile.filename);
+		sprintf(pData->argData[1], "Addr: 0x%p", hFile);
+		sprintf(pData->argData[2], "Addr: 0x%p", lpBuffer);
+		sprintf(pData->argData[3], "Value: 0x%x", nNumberOfBytesToRead);
+		sprintf(pData->argData[4], "Value: 0x%x", *lpNumberOfBytesRead);
+		sprintf(pData->argData[5], "Addr: 0x%p", lpOverlapped);
+
+		update();
+
+		/*
 		printf("\n\n******************************************\n");
 		printf("ReadFile Hooked\n");
 		GetLocalTime(&st);
 		printf("DLL日志输出:%d-%d-%d %02d: %02d: %02d: %03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+		*/
 
 		// 不建议使用该段代码，该段代码会引起CreateFile操作，造成干扰
 		/*
@@ -201,15 +349,37 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 		}
 		*/
 
-		std::cout << "hFile: " << hFile << std::endl;
+		/*
+		std::cout << "Filename: " << myFile.filename << std::endl;		// 改为了输出文件名
 		std::cout << "Buffer address: 0x" << lpBuffer << std::endl;
 		std::cout << "Number of bytes to read: " << nNumberOfBytesToRead << std::endl;
 		std::cout << "Number of bytes read (out parameter): 0x" << lpNumberOfBytesRead << std::endl;
 		std::cout << "Overlapped structure address: 0x" << lpOverlapped << std::endl;
+		*/
+		
+		// 判断操作范围是否有多个文件夹
+		if (accessedFolders.size() > 1) {
 
-		printf("******************************************\n\n");
+			GetLocalTime(&(pData->st));
+			pData->type = LOG_WARNING;
+			printf("此程序存在读取多个文件的操作！\n");
+			sprintf(pData->message, "此程序存在读取多个文件的操作！");
+			update();
+
+			/*
+			// 将输出字体颜色设置为红色
+			HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+			SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
+			std::cout << "Warning: Operation spans multiple folders." << std::endl;
+			SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+			*/
+		}
+
+		// printf("******************************************\n\n");
+		
+		mtx.unlock();
 	}
-	
+
 	return OldReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
 }
 
@@ -236,24 +406,43 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewWriteFile(
 		* GetFileType(hFile)函数会返回一个标识符，说明hFile句柄所代表的文件类型。
 		* 因此条件判断的意思是确保只拦截对磁盘文件的写操作。
 		*/
-		printf("\n\n******************************************\n");
-		printf("WriteFile Hooked\n");
-		GetLocalTime(&st);
-		printf("DLL日志输出:%d-%d-%d %02d: %02d: %02d: %03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-
-		// 不建议使用该段代码，该段代码会引起CreateFile操作
+		// 不建议使用该段代码，该段代码会引起CreateFile操作    
 		/*
 		TCHAR szFileName[MAX_PATH];
 		if (GetFinalPathNameByHandle(hFile, szFileName, MAX_PATH, FILE_NAME_NORMALIZED) != 0) {
 			std::cout << "File being written to: " << szFileName << std::endl;
 		}
 		*/
+		FileData myFile = GetFileData(hFile);
 
-		std::cout << "hFile: " << hFile << std::endl;
+		printf("\n\n******************************************\n");
+		printf("WriteFile Hooked\n");
+		GetLocalTime(&st);
+		printf("DLL日志输出:%d-%d-%d %02d: %02d: %02d: %03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+
+		std::cout << "Filename: " << myFile.filename << std::endl;//改为了输出文件名
 		std::cout << "Buffer address: 0x" << lpBuffer << std::endl;
 		std::cout << "Number of bytes to write: " << nNumberOfBytesToWrite << std::endl;
 		std::cout << "Number of bytes written (out parameter): 0x" << lpNumberOfBytesWritten << std::endl;
 		std::cout << "Overlapped structure address: 0x" << lpOverlapped << std::endl;
+
+		//判断操作范围是否有多个文件夹
+		if (accessedFolders.size() > 1) {
+			//将输出字体颜色设置为红色
+			HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+			SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
+			std::cout << "Warning: Operation spans multiple folders." << std::endl;
+			SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+		}
+
+		//通过后缀来判断是否修改了可执行文件包括exe，dll，ocx等
+		if (myFile.fileExtension == ".exe" || myFile.fileExtension == ".dll" || myFile.fileExtension == ".ocx") {
+			//将输出字体颜色设置为红色
+			HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+			SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
+			std::cout << "Warning: Possible self-replication." << std::endl;
+			SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+		}
 
 		printf("******************************************\n\n");
 	}
@@ -270,7 +459,10 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewDeleteFile(LPCTSTR lpFileName)
 	GetLocalTime(&st);
 	printf("DLL日志输出:%d-%d-%d %02d: %02d: %02d: %03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
-	std::cout << "File being deleted: " << lpFileName << std::endl;
+	int num = WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, NULL, 0, NULL, FALSE);
+	char* pchar = new char[num];
+	WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, pchar, num, NULL, FALSE);
+	std::cout << "File being deleted: " << pchar << std::endl;
 
 	BOOL result = OldDeleteFile(lpFileName);
 	if (result) {
@@ -278,6 +470,40 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewDeleteFile(LPCTSTR lpFileName)
 	}
 	else {
 		std::cout << "Failed to delete file. Error code: " << GetLastError() << std::endl;
+	}
+
+	printf("******************************************\n\n");
+	return result;
+}
+
+// 监测是否存在自我复制的情况
+static BOOL(WINAPI* OldCopyFile)(
+	LPCTSTR lpExistingFileName,          //现有文件名称
+	LPCTSTR lpNewFileName,               //新文件名称
+	BOOL beFailIfExist
+	) = CopyFile;
+
+extern "C" __declspec(dllexport) BOOL WINAPI NewCopyFile(
+	LPCTSTR lpExistingFileName,          //现有文件名称
+	LPCTSTR lpNewFileName,               //新文件名称
+	BOOL beFailIfExist
+) {
+	BOOL result = OldCopyFile(lpExistingFileName, lpNewFileName, beFailIfExist);
+
+	printf("\n\n******************************************\n");
+	printf("CopyFile Hooked\n");
+	GetLocalTime(&st);
+	printf("DLL日志输出:%d-%d-%d %02d: %02d: %02d: %03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+
+	if (result) {
+		//将输出字体颜色设置为红色
+		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+		SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
+		std::cout << "Warning: Self-copy detected." << std::endl;
+		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+	}
+	else {
+		std::cout << "Failed to copy file." << std::endl;
 	}
 
 	printf("******************************************\n\n");
@@ -449,12 +675,12 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegCreateKeyExA(
 	strcpy(pData->argName[8], "lpdwDisposition");
 
 	// 复制参数值
-	sprintf(pData->argData[0], "Addr: 0x%p", hKey);			// HKEY大小8字节
+	sprintf(pData->argData[0], "Addr: 0x%p", hKey);
 	sprintf(pData->argData[1], "Value: %s", lpSubKey);
-	sprintf(pData->argData[2], "Value: 0x%x", Reserved);	// DWORD大小4字节
+	sprintf(pData->argData[2], "Value: 0x%x", Reserved);
 	sprintf(pData->argData[3], "Addr: 0x%p", lpClass);
 	sprintf(pData->argData[4], "Value: 0x%x", dwOptions);
-	sprintf(pData->argData[5], "Value: 0x%x", samDesired);	// REGSAM大小4字节
+	sprintf(pData->argData[5], "Value: 0x%x", samDesired);
 	sprintf(pData->argData[6], "Addr: 0x%p", lpSecurityAttributes);
 	sprintf(pData->argData[7], "Addr: 0x%p", phkResult);
 	sprintf(pData->argData[8], "Addr: 0x%p", lpdwDisposition);
@@ -631,7 +857,7 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegSetValueExA(
 	LPCSTR lpValueName,		// 值的名称
 	DWORD Reserved,			// 保留，必须为0
 	DWORD dwType,			// 值的类型
-	const BYTE* lsendData,	// 指向包含值数据的缓冲区的指针
+	const BYTE * lsendData,	// 指向包含值数据的缓冲区的指针
 	DWORD cbData			// 缓冲区的大小，以字节为单位
 ) {
 	mtx.lock();

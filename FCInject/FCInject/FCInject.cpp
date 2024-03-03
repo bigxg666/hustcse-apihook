@@ -21,9 +21,9 @@ int main(){
 	
 	// 设置需要注入程序的地址
 	WCHAR EXE[MAX_PATH + 1] = { 0 };
-	// wcscpy_s(EXE, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\test_exe\\filetest.exe");
+	wcscpy_s(EXE, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\test_exe\\filetest.exe");
 	// wcscpy_s(EXE, MAX_PATH, L"E:\\security_task\\heaptest\\x64\\Debug\\heaptest.exe");
-	wcscpy_s(EXE, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\test_exe\\regtest.exe");
+	// wcscpy_s(EXE, MAX_PATH, L"C:\\Users\\Leo\\Documents\\Gitee\\hustcse-apihook\\test_exe\\regtest.exe");
 
 	if (DetourCreateProcessWithDllEx(EXE, NULL, NULL, NULL, TRUE, CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED, NULL, DirPath, &si, &pi, DLLPath, NULL)) {
 		// MessageBoxA(NULL, "INJECT", "INJECT", NULL);
