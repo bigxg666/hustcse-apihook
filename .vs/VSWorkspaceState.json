@@ -1,7 +1,9 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\FileDll\\file_test",
+    "\\hookDll\\hookDll"
   ],
-  "SelectedNode": "\\testCode",
+  "SelectedNode": "\\FileDll",
   "PreviewInSolutionExplorer": false
 }
