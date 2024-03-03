@@ -7,6 +7,7 @@
 #define L_COPY_DST L"a.txt"
 
 int main() {
+	system("pause");
 	// 测试 CreateFile 函数
 	HANDLE hFile = CreateFile(TEXT(PATH), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (hFile == INVALID_HANDLE_VALUE) {
@@ -71,5 +72,6 @@ int main() {
 	}
 	std::cout << "Test program: File deleted successfully." << std::endl;
 
+	system("pause");
 	return 0;
 }

@@ -191,7 +191,11 @@ extern "C" __declspec(dllexport) HANDLE WINAPI NewCreateFile(
 	strcpy(pData->argName[5], "dwFlagsAndAttributes");
 	strcpy(pData->argName[6], "hTemplateFile");
 
-	sprintf(pData->argData[0], "Value: %s", lpFileName);
+	int num = WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, NULL, 0, NULL, FALSE);
+	char* pchar = new char[num];
+	WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, pchar, num, NULL, FALSE);
+
+	sprintf(pData->argData[0], "Value: %s", pchar);
 	sprintf(pData->argData[1], "Value: 0x%x", dwDesiredAccess);
 	sprintf(pData->argData[2], "Value: 0x%x", dwShareMode);
 	sprintf(pData->argData[3], "Addr: 0x%p", lpSecurityAttributes);
@@ -222,8 +226,8 @@ extern "C" __declspec(dllexport) HANDLE WINAPI NewCreateFile(
 	printf("******************************************\n\n");
 	*/
 
+	delete[] pchar;
 	mtx.unlock();
-	// delete[] pchar;
 	return OldCreateFile(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 }
 
@@ -324,7 +328,7 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 		strcpy(pData->argName[4], "lpNumberOfBytesRead");
 		strcpy(pData->argName[5], "lpOverlapped");
 
-		sprintf(pData->argData[0], "Value: %s", myFile.filename);
+		sprintf(pData->argData[0], "Value: %s", myFile.filename.c_str());
 		sprintf(pData->argData[1], "Addr: 0x%p", hFile);
 		sprintf(pData->argData[2], "Addr: 0x%p", lpBuffer);
 		sprintf(pData->argData[3], "Value: 0x%x", nNumberOfBytesToRead);
@@ -363,7 +367,7 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 			GetLocalTime(&(pData->st));
 			pData->type = LOG_WARNING;
 			printf("此程序存在读取多个文件的操作！\n");
-			sprintf(pData->message, "此程序存在读取多个文件的操作！");
+			sprintf(pData->message, "此程序存在读取多个文件的操作！\n");
 			update();
 
 			/*
@@ -415,6 +419,31 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewWriteFile(
 		*/
 		FileData myFile = GetFileData(hFile);
 
+		mtx.lock();
+		GetLocalTime(&(pData->st));
+		pData->type = LOG_CUSTOM;
+
+		strcpy(pData->funcName, "WriteFile");
+		pData->argNum = 6;
+
+		// 加一个读取文件的文件名
+		strcpy(pData->argName[0], "fileName");
+		strcpy(pData->argName[1], "hFile");
+		strcpy(pData->argName[2], "lpBuffer");
+		strcpy(pData->argName[3], "nNumberOfBytesToRead");
+		strcpy(pData->argName[4], "lpNumberOfBytesRead");
+		strcpy(pData->argName[5], "lpOverlapped");
+
+		sprintf(pData->argData[0], "Value: %s", myFile.filename.c_str());
+		sprintf(pData->argData[1], "Addr: 0x%p", hFile);
+		sprintf(pData->argData[2], "Addr: 0x%p", lpBuffer);
+		sprintf(pData->argData[3], "Value: 0x%x", nNumberOfBytesToWrite);
+		sprintf(pData->argData[4], "Value: 0x%x", *lpNumberOfBytesWritten);
+		sprintf(pData->argData[5], "Addr: 0x%p", lpOverlapped);
+
+		update();
+
+		/*
 		printf("\n\n******************************************\n");
 		printf("WriteFile Hooked\n");
 		GetLocalTime(&st);
@@ -426,87 +455,170 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewWriteFile(
 		std::cout << "Number of bytes written (out parameter): 0x" << lpNumberOfBytesWritten << std::endl;
 		std::cout << "Overlapped structure address: 0x" << lpOverlapped << std::endl;
 
-		//判断操作范围是否有多个文件夹
+		*/
+		// 判断操作范围是否有多个文件夹
 		if (accessedFolders.size() > 1) {
-			//将输出字体颜色设置为红色
+			GetLocalTime(&(pData->st));
+			pData->type = LOG_WARNING;
+			printf("此程序存在写入多个文件的操作！\n");
+			sprintf(pData->message, "此程序存在写入多个文件的操作！\n");
+			update();
+
+			/*
+			// 将输出字体颜色设置为红色
 			HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 			SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
 			std::cout << "Warning: Operation spans multiple folders." << std::endl;
 			SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+			*/
 		}
 
-		//通过后缀来判断是否修改了可执行文件包括exe，dll，ocx等
+		// 通过后缀来判断是否修改了可执行文件包括exe，dll，ocx等
 		if (myFile.fileExtension == ".exe" || myFile.fileExtension == ".dll" || myFile.fileExtension == ".ocx") {
-			//将输出字体颜色设置为红色
+			GetLocalTime(&(pData->st));
+			pData->type = LOG_WARNING;
+			printf("此程序可能存在自我复制的操作！\n");
+			sprintf(pData->message, "此程序可能存在自我复制的操作！\n");
+			update();
+
+			/*
+			// 将输出字体颜色设置为红色
 			HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 			SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
 			std::cout << "Warning: Possible self-replication." << std::endl;
 			SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+			*/
 		}
 
-		printf("******************************************\n\n");
+		// printf("******************************************\n\n");
+		mtx.unlock();
 	}
+
 	return OldWriteFile(hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten, lpOverlapped);
 }
 
 // 删除文件
 static BOOL(WINAPI* OldDeleteFile)(LPCTSTR lpFileName) = DeleteFile;
 
-extern "C" __declspec(dllexport) BOOL WINAPI NewDeleteFile(LPCTSTR lpFileName)
-{
+extern "C" __declspec(dllexport) BOOL WINAPI NewDeleteFile(LPCTSTR lpFileName) {
+
+	/*
 	printf("\n\n******************************************\n");
 	printf("DeleteFile Hooked\n");
 	GetLocalTime(&st);
 	printf("DLL日志输出:%d-%d-%d %02d: %02d: %02d: %03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+	*/
+
+	mtx.lock();
+	GetLocalTime(&(pData->st));
+	pData->type = LOG_CUSTOM;
+
+	strcpy(pData->funcName, "DeleteFile");
+	pData->argNum = 1;
 
 	int num = WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, NULL, 0, NULL, FALSE);
 	char* pchar = new char[num];
 	WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, pchar, num, NULL, FALSE);
+
+	strcpy(pData->argName[0], "lpFileName");
+
+	sprintf(pData->argData[0], "lpFileName: %s", pchar);
+
+	update();
+
+	/*
+	int num = WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, NULL, 0, NULL, FALSE);
+	char* pchar = new char[num];
+	WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, pchar, num, NULL, FALSE);
 	std::cout << "File being deleted: " << pchar << std::endl;
+	*/
+
+	GetLocalTime(&(pData->st));
+	pData->type = LOG_WARNING;
+	printf("此程序进行了删除文件的操作，");
+	sprintf(pData->message, "此程序进行了删除文件的操作，");
 
 	BOOL result = OldDeleteFile(lpFileName);
 	if (result) {
-		std::cout << "File deleted successfully" << std::endl;
+		printf("且删除成功！\n");
+		sprintf(pData->message, "且删除成功！\n");
+		// std::cout << "File deleted successfully" << std::endl;
 	}
 	else {
-		std::cout << "Failed to delete file. Error code: " << GetLastError() << std::endl;
+		printf("且删除失败！\n");
+		sprintf(pData->message, "且删除失败！\n");
+		// std::cout << "Failed to delete file. Error code: " << GetLastError() << std::endl;
 	}
+	update();
 
-	printf("******************************************\n\n");
+	// printf("******************************************\n\n");
+	delete[] pchar;
+	mtx.unlock();
 	return result;
 }
 
 // 监测是否存在自我复制的情况
 static BOOL(WINAPI* OldCopyFile)(
-	LPCTSTR lpExistingFileName,          //现有文件名称
-	LPCTSTR lpNewFileName,               //新文件名称
+	LPCTSTR lpExistingFileName,          // 现有文件名称
+	LPCTSTR lpNewFileName,               // 新文件名称
 	BOOL beFailIfExist
 	) = CopyFile;
 
 extern "C" __declspec(dllexport) BOOL WINAPI NewCopyFile(
-	LPCTSTR lpExistingFileName,          //现有文件名称
-	LPCTSTR lpNewFileName,               //新文件名称
+	LPCTSTR lpExistingFileName,          // 现有文件名称
+	LPCTSTR lpNewFileName,               // 新文件名称
 	BOOL beFailIfExist
 ) {
 	BOOL result = OldCopyFile(lpExistingFileName, lpNewFileName, beFailIfExist);
 
+	/*
 	printf("\n\n******************************************\n");
 	printf("CopyFile Hooked\n");
 	GetLocalTime(&st);
 	printf("DLL日志输出:%d-%d-%d %02d: %02d: %02d: %03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+	*/
+
+	mtx.lock();
+	GetLocalTime(&(pData->st));
+	pData->type = LOG_CUSTOM;
+
+	strcpy(pData->funcName, "CopyFile");
+	pData->argNum = 3;
+
+	strcpy(pData->argName[0], "lpExistingFileName");
+	strcpy(pData->argName[1], "lpNewFileName");
+	strcpy(pData->argName[2], "beFailIfExist");
+
+	sprintf(pData->argData[0], "lpExistingFileName: %s", lpExistingFileName);
+	sprintf(pData->argData[1], "lpNewFileName: %s", lpNewFileName);
+	sprintf(pData->argData[2], "beFailIfExist: Value: 0x%x", beFailIfExist);
+
+	update();
+
+	GetLocalTime(&(pData->st));
+	pData->type = LOG_WARNING;
+	printf("此程序进行了自我复制的操作，");
+	sprintf(pData->message, "此程序进行了自我复制的操作，");
 
 	if (result) {
-		//将输出字体颜色设置为红色
+		/*
+		// 将输出字体颜色设置为红色
 		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 		SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
 		std::cout << "Warning: Self-copy detected." << std::endl;
 		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+		*/
+		printf("且复制成功！\n");
+		sprintf(pData->message, "且复制成功！\n");
 	}
 	else {
-		std::cout << "Failed to copy file." << std::endl;
+		// std::cout << "Failed to copy file." << std::endl;
+		printf("且复制失败！\n");
+		sprintf(pData->message, "且复制失败！\n");
 	}
 
-	printf("******************************************\n\n");
+	// printf("******************************************\n\n");
+	mtx.unlock();
 	return result;
 }
 
@@ -1060,10 +1172,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
 		GetLocalTime(&(pData->st));
 		pData->type = LOG_INFO;
-		sprintf(pData->message, "行为监测开始。");
+		sprintf(pData->message, "行为监测开始。\n");
 		update();
 
-		printf("行为监测开始。");
+		printf("行为监测开始。\n");
 
 		DisableThreadLibraryCalls(hModule);
 		DetourTransactionBegin();
