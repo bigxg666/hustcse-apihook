@@ -23,11 +23,11 @@
 #pragma comment(lib, "ws2_32.lib")
 
 // 测试用
-// #define TEST_MSGBOX						// 单独测试通过
+#define TEST_MSGBOX						// 单独测试通过
 #define TEST_FILE
-// #define TEST_HEAP
-// #define TEST_REG
-// #define TEST_SOCKET
+#define TEST_HEAP
+#define TEST_REG
+#define TEST_SOCKET
 
 
 const BYTE LOG_UNINIT = 0xFF;
@@ -413,7 +413,6 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewCloseHandle(HANDLE hObject) {
 	* 关闭句柄之后就不能获取句柄类型了
 	*/
 	DWORD fileType = GetFileType(hObject);
-	BOOL result = FALSE;
 	/*
 	* CloseHandle函数可以关闭多种句柄，如文件、进程、管道等
 	* 建议增加条件判断，当关闭的句柄为磁盘文件类型时，再输出相关信息
@@ -458,7 +457,7 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewCloseHandle(HANDLE hObject) {
 		mtx.unlock();
 	}
 
-	return result;
+	return OldCloseHandle(hObject);
 }
 
 // 读文件
