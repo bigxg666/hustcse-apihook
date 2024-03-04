@@ -61,11 +61,25 @@
 
 ### 测试阶段
 
-1. 在Visual Studio上配置Detours库。
-2. 编译测试程序，产生可执行程序。
-3. 在注入程序中修改Hook Dll和待监测程序的绝对路径，编译并运行注入程序FCInject。
-4. 编译并运行日志显示程序ReadLog，此时日志显示程序就会在控制台打印出相关日志信息。
-
++ 在Visual Studio上正确配置Detours库（略）
++ 编译并运行Dll注入程序
+  + 打开项目文件：hustcse-apihook\FCInject\FCInject.sln
+  + 修改Dll文件的路径
+    + Dll所在目录（DirPath）：hustcse-apihook\hookDll
+    + Dll文件的绝对路径（DLLPath）：hustcse-apihook\hookDll\hookDll.dll
+![alt text](image.png)
+  + 修改待监测程序的路径
+    + 待监测程序：hustcse-apihook\test_exe\testCode\testCode.exe
+![alt text](image-1.png)
+  + 运行项目FCInject
+![alt text](image-2.png)
++ 运行日志显示程序
+  + 打开hustcse-apihook\ShareMemoryTest\ReadLog.exe
+![alt text](image-3.png)
+    + 由于程序启动过程中会显示许多无用内容，因此上图内容可以忽略。
+    + 程序刚开始运行时，显示的内容太多，ReadLog的缓冲区会被填满，导致最开始的操作无法被捕获，多进行几次操作即可恢复正常。
+  + 点击操作待监测程序，观察ReadLog窗口的变化
+![alt text](image-4.png)
 ### 正式阶段
 
 1. xxxx

@@ -65,12 +65,14 @@ void update() {
 int main() {
 	while (hSharedMemory == NULL) {
 		printf("未检测到共享内存！\n");
+		system("pause");
 		return EXIT_FAILURE;
 	}
 
 	if (pSharedMemory == NULL) {
 		printf("映射共享内存失败！\n");
 		CloseHandle(hSharedMemory);
+		system("pause");
 		return EXIT_FAILURE;
 	}
 
@@ -122,5 +124,6 @@ int main() {
 	// 关闭共享内存对象
 	CloseHandle(hSharedMemory);
 
+	system("pause");
 	return 0;
 }
