@@ -39,7 +39,7 @@ const BYTE LOG_ERROR = 0x03;
 
 const BYTE CTRL_QUIT = 0x10;
 
-const int MAX_CNT_NUM = UINT8_MAX;		// 日志表的表长
+const int MAX_CNT_NUM = UINT16_MAX;		// 日志表的表长最大为65536
 
 const int MAX_MSG_LEN = 512;			// 提示信息的最大长度
 
@@ -50,8 +50,6 @@ const int MAX_ARGDATA_LEN = 512;		// 每个参数的数据最大支持512字节
 
 // 日志信息结构体
 typedef struct LogInfo {
-	uint8_t cnt = 0;					// 记录在日志表中的下标
-
 	SYSTEMTIME st;						// 系统时间
 	BYTE type = 0xFF;					// 日志类型
 
@@ -66,7 +64,7 @@ typedef struct LogInfo {
 
 // 共享变量结构体
 typedef struct SharedData {
-	uint8_t cnt = 0;									// 记录日志表中信息的个数
+	uint32_t cnt = 0;									// 记录日志表中信息的个数
 	LogInfo logInfoList[MAX_CNT_NUM] = {};				// 日志表
 }SharedData;
 
@@ -79,7 +77,7 @@ LPVOID pSharedMemory = MapViewOfFile(hSharedMemory, FILE_MAP_WRITE, 0, 0, 0);
 // 使用指针pSharedData指向共享内存区域
 SharedData* pSharedData = static_cast<SharedData*>(pSharedMemory);
 
-uint8_t cnt = 0;										// 日志表的下标
+uint32_t cnt = 0;										// 日志表的下标
 LogInfo* pData = &(pSharedData->logInfoList[0]);		// 当前日志结构
 
 // 更新共享变量相关信息
@@ -170,7 +168,11 @@ void GetProcessInfo() {
 
 	// 获取当前进程的PID
 	DWORD pid = GetCurrentProcessId();
-	printf("当前进程PID：%d\n", pid);
+	// printf("当前进程PID：%d\n", pid);
+	GetLocalTime(&(pData->st));
+	pData->type = LOG_INFO;
+	sprintf(pData->message, "当前进程PID：%d", pid);
+	update();
 
 	// 获取当前进程的模块句柄
 	HMODULE hModule = GetModuleHandle(NULL);
@@ -178,8 +180,11 @@ void GetProcessInfo() {
 	// 获取当前进程的模块文件名
 	char processName[MAX_PATH] = { 0 };
 	GetModuleFileNameA(hModule, processName, MAX_PATH);
-	printf("当前进程名称：%s\n", processName);
-
+	// printf("当前进程名称：%s\n", processName);
+	GetLocalTime(&(pData->st));
+	pData->type = LOG_INFO;
+	sprintf(pData->message, "当前进程名称：%s", processName);
+	update();
 }
 
 /*
@@ -294,8 +299,18 @@ extern "C" __declspec(dllexport)int WINAPI NewMessageBoxW(
 	strcpy(pData->argName[3], "uType");
 
 	sprintf(pData->argData[0], "Addr: %p", hWnd);
-	sprintf(pData->argData[1], "Value: %ls", lpText);
-	sprintf(pData->argData[2], "Value: %ls", lpCaption);
+
+	int num = 0;
+	char buffer[MAX_ARGDATA_LEN];
+
+	num = WideCharToMultiByte(CP_OEMCP, NULL, lpText, -1, NULL, 0, NULL, FALSE);
+	WideCharToMultiByte(CP_OEMCP, NULL, lpText, -1, buffer, num, NULL, FALSE);
+	sprintf(pData->argData[1], "Value: \"%s\"", buffer);
+
+	num = WideCharToMultiByte(CP_OEMCP, NULL, lpCaption, -1, NULL, 0, NULL, FALSE);
+	WideCharToMultiByte(CP_OEMCP, NULL, lpCaption, -1, buffer, num, NULL, FALSE);
+	sprintf(pData->argData[2], "Value: \"%s\"", buffer);
+
 	sprintf(pData->argData[3], "Value: 0x%x", uType);
 
 	update();
@@ -366,7 +381,13 @@ extern "C" __declspec(dllexport) HANDLE WINAPI NewCreateFile(
 	strcpy(pData->argName[5], "dwFlagsAndAttributes");
 	strcpy(pData->argName[6], "hTemplateFile");
 
-	sprintf(pData->argData[0], "Value: %ls", lpFileName);
+	int num = 0;
+	char buffer[MAX_ARGDATA_LEN];
+
+	num = WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, NULL, 0, NULL, FALSE);
+	WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, buffer, num, NULL, FALSE);
+	sprintf(pData->argData[0], "Value: \"%s\"", buffer);
+
 	sprintf(pData->argData[1], "Value: 0x%x", dwDesiredAccess);
 	sprintf(pData->argData[2], "Value: 0x%x", dwShareMode);
 	sprintf(pData->argData[3], "Addr: 0x%p", lpSecurityAttributes);
@@ -658,8 +679,8 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewWriteFile(
 		if (myFile.fileExtension == ".exe" || myFile.fileExtension == ".dll" || myFile.fileExtension == ".ocx") {
 			GetLocalTime(&(pData->st));
 			pData->type = LOG_WARNING;
-			printf("此程序可能存在自我复制的操作！\n");
-			sprintf(pData->message, "此程序可能存在自我复制的操作！");
+			printf("此程序存在修改了可执行文件的操作！\n");
+			sprintf(pData->message, "此程序存在修改了可执行文件的操作！");
 			update();
 
 			/*
@@ -699,7 +720,12 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewDeleteFile(LPCTSTR lpFileName) {
 
 	strcpy(pData->argName[0], "lpFileName");
 
-	sprintf(pData->argData[0], "Value: %ls", lpFileName);
+	int num = 0;
+	char buffer[MAX_ARGDATA_LEN];
+
+	num = WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, NULL, 0, NULL, FALSE);
+	WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, buffer, num, NULL, FALSE);
+	sprintf(pData->argData[0], "Value: \"%s\"", buffer);
 
 	update();
 
@@ -718,12 +744,12 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewDeleteFile(LPCTSTR lpFileName) {
 	BOOL result = OldDeleteFile(lpFileName);
 	if (result) {
 		printf("且删除成功！\n");
-		sprintf(pData->message, "且删除成功！");
+		sprintf(pData->message + strlen(pData->message), "且删除成功！");
 		// std::cout << "File deleted successfully" << std::endl;
 	}
 	else {
 		printf("且删除失败！\n");
-		sprintf(pData->message, "且删除失败！");
+		sprintf(pData->message + strlen(pData->message), "且删除失败！");
 		// std::cout << "Failed to delete file. Error code: " << GetLastError() << std::endl;
 	}
 	update();
@@ -766,9 +792,17 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewCopyFile(
 	strcpy(pData->argName[1], "lpNewFileName");
 	strcpy(pData->argName[2], "beFailIfExist");
 
+	int num = 0;
+	char buffer[MAX_ARGDATA_LEN];
 
-	sprintf(pData->argData[0], "Value: %ls", lpExistingFileName);
-	sprintf(pData->argData[1], "Value: %ls", lpNewFileName);
+	num = WideCharToMultiByte(CP_OEMCP, NULL, lpExistingFileName, -1, NULL, 0, NULL, FALSE);
+	WideCharToMultiByte(CP_OEMCP, NULL, lpExistingFileName, -1, buffer, num, NULL, FALSE);
+	sprintf(pData->argData[0], "Value: \"%s\"", buffer);
+
+	num = WideCharToMultiByte(CP_OEMCP, NULL, lpNewFileName, -1, NULL, 0, NULL, FALSE);
+	WideCharToMultiByte(CP_OEMCP, NULL, lpNewFileName, -1, buffer, num, NULL, FALSE);
+	sprintf(pData->argData[1], "Value: \"%s\"", buffer);
+
 	sprintf(pData->argData[2], "Value: 0x%x", beFailIfExist);
 
 	update();
@@ -787,13 +821,14 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewCopyFile(
 		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 		*/
 		printf("且复制成功！\n");
-		sprintf(pData->message, "且复制成功！");
+		sprintf(pData->message + strlen(pData->message), "且复制成功！");
 	}
 	else {
 		// std::cout << "Failed to copy file." << std::endl;
 		printf("且复制失败！\n");
-		sprintf(pData->message, "且复制失败！");
+		sprintf(pData->message + strlen(pData->message), "且复制失败！");
 	}
+	update();
 
 	// printf("******************************************\n\n");
 	mtx.unlock();
@@ -1174,7 +1209,14 @@ extern "C" __declspec(dllexport)LSTATUS WINAPI NewRegCreateKeyEx(
 
 	// 复制参数值
 	sprintf(pData->argData[0], "Addr: 0x%p", hKey);
-	sprintf(pData->argData[1], "Value: %ls", lpSubKey);
+
+	int num = 0;
+	char buffer[MAX_ARGDATA_LEN];
+
+	num = WideCharToMultiByte(CP_OEMCP, NULL, lpSubKey, -1, NULL, 0, NULL, FALSE);
+	WideCharToMultiByte(CP_OEMCP, NULL, lpSubKey, -1, buffer, num, NULL, FALSE);
+	sprintf(pData->argData[1], "Value: \"%s\"", buffer);
+
 	sprintf(pData->argData[2], "Value: 0x%x", Reserved);
 	sprintf(pData->argData[3], "Addr: 0x%p", lpClass);
 	sprintf(pData->argData[4], "Value: 0x%x", dwOptions);
@@ -1274,7 +1316,14 @@ extern "C" __declspec(dllexport)LSTATUS WINAPI NewRegOpenKeyEx(HKEY hKey, LPCWST
 	strcpy(pData->argName[4], "phkResult");
 
 	sprintf(pData->argData[0], "Addr: 0x%p", hKey);
-	sprintf(pData->argData[1], "Value: %ls", lpSubKey);
+
+	int num = 0;
+	char buffer[MAX_ARGDATA_LEN];
+
+	num = WideCharToMultiByte(CP_OEMCP, NULL, lpSubKey, -1, NULL, 0, NULL, FALSE);
+	WideCharToMultiByte(CP_OEMCP, NULL, lpSubKey, -1, buffer, num, NULL, FALSE);
+	sprintf(pData->argData[1], "Value: \"%s\"", buffer);
+
 	sprintf(pData->argData[2], "Value: 0x%x", ulOptions);
 	sprintf(pData->argData[3], "Value: 0x%x", samDesired);
 	sprintf(pData->argData[4], "Addr: 0x%p", phkResult);
@@ -1367,7 +1416,14 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegQueryValueExW(
 	strcpy(pData->argName[5], "lpcbData");
 
 	sprintf(pData->argData[0], "Addr: 0x%p", hKey);
-	sprintf(pData->argData[1], "Value: %ls", lpValueName);
+
+	int num = 0;
+	char buffer[MAX_ARGDATA_LEN];
+
+	num = WideCharToMultiByte(CP_OEMCP, NULL, lpValueName, -1, NULL, 0, NULL, FALSE);
+	WideCharToMultiByte(CP_OEMCP, NULL, lpValueName, -1, buffer, num, NULL, FALSE);
+	sprintf(pData->argData[1], "Value: \"%s\"", buffer);
+
 	sprintf(pData->argData[2], "Addr: 0x%p", lpReserved);
 	sprintf(pData->argData[3], "Addr: 0x%p", lpType);
 	sprintf(pData->argData[4], "Addr: 0x%p", lpData);
@@ -1458,7 +1514,14 @@ extern "C" __declspec(dllexport)LSTATUS WINAPI NewRegSetValueEx(HKEY hKey, LPCWS
 	strcpy(pData->argName[5], "cbData");
 
 	sprintf(pData->argData[0], "Addr: 0x%p", hKey);
-	sprintf(pData->argData[1], "Value: %ls", lpValueName);
+
+	int num = 0;
+	char buffer[MAX_ARGDATA_LEN];
+
+	num = WideCharToMultiByte(CP_OEMCP, NULL, lpValueName, -1, NULL, 0, NULL, FALSE);
+	WideCharToMultiByte(CP_OEMCP, NULL, lpValueName, -1, buffer, num, NULL, FALSE);
+	sprintf(pData->argData[1], "Value: \"%s\"", buffer);
+
 	sprintf(pData->argData[2], "Value: 0x%x", Reserved);
 	sprintf(pData->argData[3], "Value: 0x%x", dwType);
 	sprintf(pData->argData[4], "Addr: 0x%p", lpData);
@@ -1639,8 +1702,7 @@ extern "C" __declspec(dllexport) int WINAPI NewSend(
 	// 将发送的内容转换为字符串
 	std::string content(buf, len);
 	// 检查发送的内容是否是已读取的文件内容
-	if (fileContents.find(content) != fileContents.end())
-	{
+	if (fileContents.find(content) != fileContents.end()) {
 		// 在这里可以添加逻辑来处理将文件内容发送到网络的情况
 		printf("Detected sending file content to network:\n%s\n", content.c_str());
 	}
@@ -1803,6 +1865,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 		DisableThreadLibraryCalls(hModule);
 		DetourTransactionBegin();
 		DetourUpdateThread(GetCurrentThread());
+
+		GetProcessInfo();
 
 		// 弹窗操作
 #ifdef TEST_MSGBOX

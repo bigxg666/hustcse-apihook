@@ -268,7 +268,7 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewWriteFile(
 			//将输出字体颜色设置为红色
 			HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 			SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
-			std::cout << "Warning: Possible self-replication." << std::endl;
+			std::cout << "Warning: Possible modification of executable file." << std::endl;
 			SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 		}
 
