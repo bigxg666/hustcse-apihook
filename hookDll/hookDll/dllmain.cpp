@@ -22,6 +22,12 @@
 #pragma comment(lib, "detours.lib")
 #pragma comment(lib, "ws2_32.lib")
 
+// 测试用
+// #define TEST_MSGBOX						// 单独测试通过
+#define TEST_FILE
+// #define TEST_HEAP
+// #define TEST_REG
+// #define TEST_SOCKET
 
 
 const BYTE LOG_UNINIT = 0xFF;
@@ -223,8 +229,28 @@ extern "C" __declspec(dllexport)int WINAPI NewMessageBoxA(
 	_In_opt_ LPCSTR lpText,         // 要显示的消息
 	_In_opt_ LPCSTR lpCaption,      // 对话框标题
 	_In_ UINT uType                 // 对话框的内容和行为
-)
-{
+) {
+	mtx.lock();
+	GetLocalTime(&(pData->st));
+	pData->type = LOG_CUSTOM;
+
+	strcpy(pData->funcName, "MessageBoxA");
+	pData->argNum = 4;
+
+	strcpy(pData->argName[0], "hwnd");
+	strcpy(pData->argName[1], "lpText");
+	strcpy(pData->argName[2], "lpCaption");
+	strcpy(pData->argName[3], "uType");
+
+	sprintf(pData->argData[0], "Addr: %p", hwnd);
+	sprintf(pData->argData[1], "Value: %s", lpText);
+	sprintf(pData->argData[2], "Value: %s", lpCaption);
+	sprintf(pData->argData[3], "Value: 0x%x", uType);
+
+	update();
+	mtx.unlock();
+
+	/*
 	printf("\n\n****************************************\n");
 	printf("MessageBoxA Hooked\n");
 	GetLocalTime(&st);
@@ -235,6 +261,8 @@ extern "C" __declspec(dllexport)int WINAPI NewMessageBoxA(
 	//printf("uType: %u (%s)\n", uType, GetMessageBoxStyleName(uType)); // 输出样式参数及其含义
 	GetProcessInfo();
 	printf("****************************************\n\n");
+	*/
+
 	// 调用原始的函数，此处更改了原始弹窗内容
 	return OldMessageBoxA(NULL, "new MessageBoxA", "Hooked", MB_OK);
 	// return OldMessageBoxA(hWnd, lpText, lpCaption, uType);
@@ -252,8 +280,28 @@ extern "C" __declspec(dllexport)int WINAPI NewMessageBoxW(
 	_In_opt_ LPCWSTR lpText,        // 要显示的消息
 	_In_opt_ LPCWSTR lpCaption,     // 对话框标题
 	_In_ UINT uType                 // 对话框的内容和行为
-)
-{
+) {
+	mtx.lock();
+	GetLocalTime(&(pData->st));
+	pData->type = LOG_CUSTOM;
+
+	strcpy(pData->funcName, "MessageBoxW");
+	pData->argNum = 4;
+
+	strcpy(pData->argName[0], "hWnd");
+	strcpy(pData->argName[1], "lpText");
+	strcpy(pData->argName[2], "lpCaption");
+	strcpy(pData->argName[3], "uType");
+
+	sprintf(pData->argData[0], "Addr: %p", hWnd);
+	sprintf(pData->argData[1], "Value: %ls", lpText);
+	sprintf(pData->argData[2], "Value: %ls", lpCaption);
+	sprintf(pData->argData[3], "Value: 0x%x", uType);
+
+	update();
+	mtx.unlock();
+
+	/*
 	printf("\n\n****************************************\n");
 	printf("MessageBoxW Hooked\n");
 	GetLocalTime(&st);
@@ -265,6 +313,8 @@ extern "C" __declspec(dllexport)int WINAPI NewMessageBoxW(
 	//printf("uType: %u (%s)\n", uType, GetMessageBoxStyleName(uType)); // 输出样式参数及其含义
 	GetProcessInfo();
 	printf("****************************************\n\n");
+	*/
+
 	// 调用原始的函数，此处更改了弹窗内容
 	return OldMessageBoxW(NULL, L"new MessageBoxW", L"Hooked", MB_OK);
 	// return OldMessageBoxW(hWnd, lpText, lpCaption, uType);
@@ -316,11 +366,7 @@ extern "C" __declspec(dllexport) HANDLE WINAPI NewCreateFile(
 	strcpy(pData->argName[5], "dwFlagsAndAttributes");
 	strcpy(pData->argName[6], "hTemplateFile");
 
-	int num = WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, NULL, 0, NULL, FALSE);
-	char* pchar = new char[num];
-	WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, pchar, num, NULL, FALSE);
-
-	sprintf(pData->argData[0], "Value: %s", pchar);
+	sprintf(pData->argData[0], "Value: %ls", lpFileName);
 	sprintf(pData->argData[1], "Value: 0x%x", dwDesiredAccess);
 	sprintf(pData->argData[2], "Value: 0x%x", dwShareMode);
 	sprintf(pData->argData[3], "Addr: 0x%p", lpSecurityAttributes);
@@ -351,7 +397,7 @@ extern "C" __declspec(dllexport) HANDLE WINAPI NewCreateFile(
 	printf("******************************************\n\n");
 	*/
 
-	delete[] pchar;
+	// delete[] pchar;
 	mtx.unlock();
 	return OldCreateFile(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 }
@@ -458,7 +504,7 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 		sprintf(pData->argData[1], "Addr: 0x%p", hFile);
 		sprintf(pData->argData[2], "Addr: 0x%p", lpBuffer);
 		sprintf(pData->argData[3], "Value: 0x%x", nNumberOfBytesToRead);
-		sprintf(pData->argData[4], "Value: 0x%x", *lpNumberOfBytesRead);
+		sprintf(pData->argData[4], "Value: 0x%p", lpNumberOfBytesRead);
 		sprintf(pData->argData[5], "Addr: 0x%p", lpOverlapped);
 
 		update();
@@ -505,15 +551,17 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 			*/
 		}
 
-		// 判断是否成功读取文件内容,以便于判断是否将文件内容读取后发送到网络
-		if (result && *lpNumberOfBytesRead > 0)
-		{
-			// 将读取的内容转换为字符串
-			std::string content(static_cast<char*>(lpBuffer), *lpNumberOfBytesRead);
-			// 将内容存储到集合中
-			fileContents.insert(content);
+		// 防止出现空指针引用
+		if (lpNumberOfBytesRead) {
+			// 判断是否成功读取文件内容,以便于判断是否将文件内容读取后发送到网络
+			if (result && *lpNumberOfBytesRead > 0) {
+				// 将读取的内容转换为字符串
+				std::string content(static_cast<char*>(lpBuffer), *lpNumberOfBytesRead);
+				// 将内容存储到集合中
+				fileContents.insert(content);
+			}
 		}
-
+		
 		// printf("******************************************\n\n");
 
 		mtx.unlock();
@@ -572,7 +620,7 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewWriteFile(
 		sprintf(pData->argData[1], "Addr: 0x%p", hFile);
 		sprintf(pData->argData[2], "Addr: 0x%p", lpBuffer);
 		sprintf(pData->argData[3], "Value: 0x%x", nNumberOfBytesToWrite);
-		sprintf(pData->argData[4], "Value: 0x%x", *lpNumberOfBytesWritten);
+		sprintf(pData->argData[4], "Value: 0x%p", lpNumberOfBytesWritten);
 		sprintf(pData->argData[5], "Addr: 0x%p", lpOverlapped);
 
 		update();
@@ -650,13 +698,9 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewDeleteFile(LPCTSTR lpFileName) {
 	strcpy(pData->funcName, "DeleteFile");
 	pData->argNum = 1;
 
-	int num = WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, NULL, 0, NULL, FALSE);
-	char* pchar = new char[num];
-	WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, pchar, num, NULL, FALSE);
-
 	strcpy(pData->argName[0], "lpFileName");
 
-	sprintf(pData->argData[0], "Value: %s", pchar);
+	sprintf(pData->argData[0], "Value: %ls", lpFileName);
 
 	update();
 
@@ -686,7 +730,7 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewDeleteFile(LPCTSTR lpFileName) {
 	update();
 
 	// printf("******************************************\n\n");
-	delete[] pchar;
+	// delete[] pchar;
 	mtx.unlock();
 	return result;
 }
@@ -723,25 +767,9 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewCopyFile(
 	strcpy(pData->argName[1], "lpNewFileName");
 	strcpy(pData->argName[2], "beFailIfExist");
 
-	int num;
-	char* pchar;
 
-	num = WideCharToMultiByte(CP_OEMCP, NULL, lpExistingFileName, -1, NULL, 0, NULL, FALSE);
-	pchar = new char[num];
-	WideCharToMultiByte(CP_OEMCP, NULL, lpExistingFileName, -1, pchar, num, NULL, FALSE);
-
-	sprintf(pData->argData[0], "Value: %s", pchar);
-
-	delete[] pchar;
-
-	num = WideCharToMultiByte(CP_OEMCP, NULL, lpNewFileName, -1, NULL, 0, NULL, FALSE);
-	pchar = new char[num];
-	WideCharToMultiByte(CP_OEMCP, NULL, lpNewFileName, -1, pchar, num, NULL, FALSE);
-
-	sprintf(pData->argData[1], "Value: %s", pchar);
-
-	delete[] pchar;
-
+	sprintf(pData->argData[0], "Value: %ls", lpExistingFileName);
+	sprintf(pData->argData[1], "Value: %ls", lpNewFileName);
 	sprintf(pData->argData[2], "Value: 0x%x", beFailIfExist);
 
 	update();
@@ -1580,35 +1608,45 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 		DetourUpdateThread(GetCurrentThread());
 
 		// 弹窗操作
+#ifdef TEST_MSGBOX
 		DetourAttach(&(PVOID&)OldMessageBoxW, NewMessageBoxW);
 		DetourAttach(&(PVOID&)OldMessageBoxA, NewMessageBoxA);
+#endif
 
 		// 文件操作
+#ifdef TEST_FILE
 		DetourAttach(&(PVOID&)OldCreateFile, NewCreateFile);
 		DetourAttach(&(PVOID&)OldCloseHandle, NewCloseHandle);
 		DetourAttach(&(PVOID&)OldReadFile, NewReadFile);
 		DetourAttach(&(PVOID&)OldWriteFile, NewWriteFile);
 		DetourAttach(&(PVOID&)OldDeleteFile, NewDeleteFile);
+#endif
 
 		// 堆操作
+#ifdef TEST_HEAP
 		DetourAttach(&(PVOID&)OldHeapCreate, NewHeapCreate);
 		DetourAttach(&(PVOID&)OldHeapDestroy, NewHeapDestroy);
 		DetourAttach(&(PVOID&)OldHeapAlloc, NewHeapAlloc);
 		DetourAttach(&(PVOID&)OldHeapFree, NewHeapFree);
+#endif
 
 		// 注册表操作
+#ifdef TEST_REG
 		DetourAttach(&(PVOID&)OldRegCreateKeyExA, NewRegCreateKeyExA);
 		DetourAttach(&(PVOID&)OldRegOpenKeyExA, NewRegOpenKeyExA);
 		DetourAttach(&(PVOID&)OldRegQueryValueExA, NewRegQueryValueExA);
 		DetourAttach(&(PVOID&)OldRegSetValueExA, NewRegSetValueExA);
 		DetourAttach(&(PVOID&)OldRegCloseKey, NewRegCloseKey);
+#endif
 
 		// 网络操作
+#ifdef TEST_SOCKET
 		DetourAttach(&(PVOID&)OldSocket, NewSocket);
 		DetourAttach(&(PVOID&)OldBind, NewBind);
 		DetourAttach(&(PVOID&)OldSend, NewSend);
 		DetourAttach(&(PVOID&)OldConnect, NewConnect);
 		DetourAttach(&(PVOID&)OldRecv, NewRecv);
+#endif
 
 		DetourTransactionCommit();
 		break;
@@ -1619,35 +1657,45 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 		DetourUpdateThread(GetCurrentThread());
 
 		// 弹窗操作
+#ifdef TEST_MSGBOX
 		DetourDetach(&(PVOID&)OldMessageBoxW, NewMessageBoxW);
 		DetourDetach(&(PVOID&)OldMessageBoxA, NewMessageBoxA);
+#endif
 
 		// 文件操作
+#ifdef TEST_FILE
 		DetourDetach(&(PVOID&)OldCreateFile, NewCreateFile);
 		DetourDetach(&(PVOID&)OldCloseHandle, NewCloseHandle);
 		DetourDetach(&(PVOID&)OldReadFile, NewReadFile);
 		DetourDetach(&(PVOID&)OldWriteFile, NewWriteFile);
 		DetourDetach(&(PVOID&)OldDeleteFile, NewDeleteFile);
+#endif
 
 		// 堆操作
+#ifdef TEST_HEAP
 		DetourDetach(&(PVOID&)OldHeapCreate, NewHeapCreate);
 		DetourDetach(&(PVOID&)OldHeapDestroy, NewHeapDestroy);
 		DetourDetach(&(PVOID&)OldHeapAlloc, NewHeapAlloc);
 		DetourDetach(&(PVOID&)OldHeapFree, NewHeapFree);
+#endif
 
 		// 注册表操作
+#ifdef TEST_REG
 		DetourDetach(&(PVOID&)OldRegCreateKeyExA, NewRegCreateKeyExA);
 		DetourDetach(&(PVOID&)OldRegOpenKeyExA, NewRegOpenKeyExA);
 		DetourDetach(&(PVOID&)OldRegQueryValueExA, NewRegQueryValueExA);
 		DetourDetach(&(PVOID&)OldRegSetValueExA, NewRegSetValueExA);
 		DetourDetach(&(PVOID&)OldRegCloseKey, NewRegCloseKey);
+#endif
 
 		// 网络操作
+#ifdef TEST_SOCKET
 		DetourDetach(&(PVOID&)OldSocket, NewSocket);
 		DetourDetach(&(PVOID&)OldBind, NewBind);
 		DetourDetach(&(PVOID&)OldSend, NewSend);
 		DetourDetach(&(PVOID&)OldConnect, NewConnect);
 		DetourDetach(&(PVOID&)OldRecv, NewRecv);
+#endif
 
 		DetourTransactionCommit();
 
