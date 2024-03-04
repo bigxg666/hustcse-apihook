@@ -69,7 +69,8 @@ private:
     QThread readerThread;
     SharedMemoryReader *sharedMemoryReader;
     PROCESS_INFORMATION processInfo;
-
+    // hookdll的绝对路径
+    QString dllPath = "C:/Users/zhuor/Desktop/secure_design/hustcse-apihook/hookDll/x64/Debug/hookDLL.dll";
     // QListView *listView;
 };
 #endif // MAINWINDOW_H

@@ -53,7 +53,7 @@ void SharedMemoryReader::readSharedMemory()
 
             if (pLogInfo->type == LOG_CUSTOM) {
                 logStream << "[截获] 该程序使用了函数: " << pLogInfo->funcName << "\n";
-                emit messageReceived(logMessage);
+
                 emit API_Received(pLogInfo);
                 for (int j = 0; j < pLogInfo->argNum; j++) {
                     logStream << QString("%1参数名: %2, 内容- %3\n").arg("", 32).arg(pLogInfo->argName[j]).arg(pLogInfo->argData[j]);
@@ -63,6 +63,7 @@ void SharedMemoryReader::readSharedMemory()
             }
             else if(pLogInfo->type == LOG_ERROR){
                 logStream << "[错误]" << pLogInfo->message << "\n";
+                emit messageReceived(logMessage);
             }
             else if(pLogInfo->type == LOG_WARNING){
                 logStream << "[警告]" << pLogInfo->message << "\n";

@@ -36,7 +36,7 @@ void LogWindow::loadLogContent()
     QString currentPath = QDir::currentPath();
     QString filePath = currentPath + "/log/log.txt";
 
-    QFile logFile("C:/Users/zhuor/Desktop/secure_design/Test_GUI/GUI/log.txt");
+    QFile logFile(logFilePath);
     if (!logFile.exists())
     {
         if (logFile.open(QIODevice::WriteOnly | QIODevice::Text))
@@ -101,7 +101,7 @@ void LogWindow::filterLogContent()
 
     logModel->clear();
 
-    QFile logFile("C:/Users/zhuor/Desktop/secure_design/Test_GUI/GUI/log.txt");
+    QFile logFile(logFilePath);
     if (!logFile.exists())
     {
         qDebug() << "log.txt does not exist";

@@ -9,6 +9,7 @@
 #include <QFile>
 #include <QDir.h>
 #include <QRegularExpression>
+#include <QString>
 
 
 namespace Ui {
@@ -30,7 +31,7 @@ private slots:
 private:
     Ui::LogWindow *ui;
     QStandardItemModel *logModel;
-
+    QString logFilePath = "C:/Users/zhuor/Desktop/secure_design/Test_GUI/GUI/log.txt";
     void loadLogContent();
     void filterLogContent();
 };

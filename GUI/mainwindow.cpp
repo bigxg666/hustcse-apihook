@@ -88,7 +88,7 @@ void MainWindow::on_run_Button_clicked()
         QFileInfo fileInfo(selectedFileName);
         if (fileInfo.isExecutable())
         {
-            QString dllPath = "C:/Users/zhuor/Desktop/secure_design/hustcse-apihook/hookDll/x64/Debug/hookDLL.dll";  // Replace with your DLL path
+              // Replace with your DLL path
             ProcessInfo info = injectDllAndRun(selectedFileName, dllPath);
             emit startReadingSharedMemory();
             if (!info.name.isEmpty()) {
