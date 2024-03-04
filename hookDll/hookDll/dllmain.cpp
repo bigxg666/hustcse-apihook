@@ -95,6 +95,8 @@ typedef struct FileData {
 }FileData;
 std::set<std::string> accessedFolders;	// 存储已经访问过的文件夹路径
 
+std::unordered_set<std::string> fileContents;// 添加一个全局集合，用于存储已经读取的文件内容
+
 // 获取文件夹路径及文件后缀等信息
 FileData GetFileData(HANDLE hFile) {
 	FileData result;
@@ -321,6 +323,7 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 	LPDWORD      lpNumberOfBytesRead,           // 实际读取到的字节数
 	LPOVERLAPPED lpOverlapped                   // OVERLAPPED 结构，一般设定为 NULL 
 ) {
+	BOOL result = OldReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
 	/*
 	* 增加条件判断，使得仅监测磁盘文件的读取
 	* 否则将会出现大量无用信息
@@ -394,12 +397,20 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 			*/
 		}
 
+		// 判断是否成功读取文件内容,以便于判断是否将文件内容读取后发送到网络
+		if (result && *lpNumberOfBytesRead > 0)
+		{
+			// 将读取的内容转换为字符串
+			std::string content(static_cast<char*>(lpBuffer), *lpNumberOfBytesRead);
+			// 将内容存储到集合中
+			fileContents.insert(content);
+		}
+
 		// printf("******************************************\n\n");
 		
 		mtx.unlock();
 	}
-
-	return OldReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+	return result;
 }
 
 // 写文件
@@ -1291,6 +1302,15 @@ extern "C" __declspec(dllexport) int WINAPI NewSend(
 ) {
 	// 调用原始函数
 	int result = OldSend(s, buf, len, flags);
+
+	// 将发送的内容转换为字符串
+	std::string content(buf, len);
+	// 检查发送的内容是否是已读取的文件内容
+	if (fileContents.find(content) != fileContents.end())
+	{
+		// 在这里可以添加逻辑来处理将文件内容发送到网络的情况
+		printf("Detected sending file content to network:\n%s\n", content.c_str());
+	}
 
 	mtx.lock();
 	GetLocalTime(&(pData->st));

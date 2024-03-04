@@ -27,9 +27,17 @@ int main() {
 	SOCKADDR clientAddr;
 	int nSize = sizeof(SOCKADDR);
 	SOCKET clientSock = accept(serverSock, (SOCKADDR*)&clientAddr, &nSize);
+
+	// 接收客户端传回的数据
+	char szBuffer[MAXBYTE] = { 0 };
+	recv(clientSock, szBuffer, MAXBYTE, NULL);
+	// 输出接收到的数据
+	printf("Message from client: %s\n", szBuffer);
+
 	//向客户端发送数据
 	char str[32] = "Hello World!";
 	send(clientSock, str, strlen(str) + sizeof(char), NULL);
+
 	Sleep(8000);
 	//关闭套接字
 	closesocket(clientSock);
