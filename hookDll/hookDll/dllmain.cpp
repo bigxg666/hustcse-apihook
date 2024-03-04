@@ -85,8 +85,6 @@ void update() {
 	pData = &(pSharedData->logInfoList[cnt]);			// 令pData指向下一个日志表项
 }
 
-
-
 // 文件信息结构体
 typedef struct FileData {
 	std::string filename;				// 完整文件名
@@ -111,7 +109,7 @@ FileData GetFileData(HANDLE hFile) {
 		if (result.filename.substr(0, 4) == "\\\\?\\") {
 			result.filename = result.filename.substr(4);
 		}
-		
+
 		// 从文件名中提取文件扩展名
 		size_t dotPos = result.filename.find_last_of('.');
 		if (dotPos != std::string::npos) {
@@ -155,12 +153,122 @@ FileData GetFileData(HANDLE hFile) {
 	return result;
 }
 
-
-
 // 全局变量定义
 std::mutex mtx;							// 信号量
 SYSTEMTIME st;							// 系统时间
 
+// 获取当前进程的名称和Exe文件信息
+void GetProcessInfo() {
+	// 获取当前进程的句柄
+	HANDLE hProcess = GetCurrentProcess();
+
+	// 获取当前进程的PID
+	DWORD pid = GetCurrentProcessId();
+	printf("当前进程PID：%d\n", pid);
+
+	// 获取当前进程的模块句柄
+	HMODULE hModule = GetModuleHandle(NULL);
+
+	// 获取当前进程的模块文件名
+	char processName[MAX_PATH] = { 0 };
+	GetModuleFileNameA(hModule, processName, MAX_PATH);
+	printf("当前进程名称：%s\n", processName);
+
+}
+
+/*
+// 映射MessageBox样式常量到其含义
+const char* GetMessageBoxStyleName(UINT uType) {
+	switch (uType) {
+	case MB_OK: return "MB_OK";
+	case MB_OKCANCEL: return "MB_OKCANCEL";
+	case MB_ABORTRETRYIGNORE: return "MB_ABORTRETRYIGNORE";
+	case MB_YESNOCANCEL: return "MB_YESNOCANCEL";
+	case MB_YESNO: return "MB_YESNO";
+	case MB_RETRYCANCEL: return "MB_RETRYCANCEL";
+	case MB_CANCELTRYCONTINUE: return "MB_CANCELTRYCONTINUE";
+	case MB_ICONHAND: return "MB_ICONHAND";
+	case MB_ICONQUESTION: return "MB_ICONQUESTION";
+	case MB_ICONEXCLAMATION: return "MB_ICONEXCLAMATION";
+	case MB_ICONASTERISK: return "MB_ICONASTERISK";
+	case MB_USERICON: return "MB_USERICON";
+	case MB_DEFBUTTON2: return "MB_DEFBUTTON2";
+	case MB_DEFBUTTON3: return "MB_DEFBUTTON3";
+	case MB_DEFBUTTON4: return "MB_DEFBUTTON4";
+	case MB_SYSTEMMODAL: return "MB_SYSTEMMODAL";
+	case MB_TASKMODAL: return "MB_TASKMODAL";
+	case MB_HELP: return "MB_HELP";
+	case MB_NOFOCUS: return "MB_NOFOCUS";
+	case MB_SETFOREGROUND: return "MB_SETFOREGROUND";
+	case MB_DEFAULT_DESKTOP_ONLY: return "MB_DEFAULT_DESKTOP_ONLY";
+	case MB_TOPMOST: return "MB_TOPMOST";
+	case MB_RIGHT: return "MB_RIGHT";
+	case MB_RTLREADING: return "MB_RTLREADING";
+	}
+	return "Unknown";
+}
+*/
+
+// 弹窗操作
+// 定义和引入需要Hook的函数和替换的函数
+static int (WINAPI* OldMessageBoxA)(
+	_In_opt_ HWND hwnd,             // 要创建的消息框的所有者窗口的句柄
+	_In_opt_ LPCSTR lpText,         // 要显示的消息
+	_In_opt_ LPCSTR lpCaption,      // 对话框标题
+	_In_ UINT uType                 // 对话框的内容和行为
+	) = MessageBoxA;
+
+extern "C" __declspec(dllexport)int WINAPI NewMessageBoxA(
+	_In_opt_ HWND hwnd,             // 要创建的消息框的所有者窗口的句柄
+	_In_opt_ LPCSTR lpText,         // 要显示的消息
+	_In_opt_ LPCSTR lpCaption,      // 对话框标题
+	_In_ UINT uType                 // 对话框的内容和行为
+)
+{
+	printf("\n\n****************************************\n");
+	printf("MessageBoxA Hooked\n");
+	GetLocalTime(&st);
+	printf("DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+	printf("lpText: %s\n", lpText);
+	printf("lpCaption: %s\n", lpCaption);
+	printf("uType: %u\n", uType); // 使用%u格式说明符输出UINT类型
+	//printf("uType: %u (%s)\n", uType, GetMessageBoxStyleName(uType)); // 输出样式参数及其含义
+	GetProcessInfo();
+	printf("****************************************\n\n");
+	// 调用原始的函数，此处更改了原始弹窗内容
+	return OldMessageBoxA(NULL, "new MessageBoxA", "Hooked", MB_OK);
+	// return OldMessageBoxA(hWnd, lpText, lpCaption, uType);
+}
+
+static int (WINAPI* OldMessageBoxW)(
+	_In_opt_ HWND hWnd,             // 要创建的消息框的所有者窗口的句柄
+	_In_opt_ LPCWSTR lpText,        // 要显示的消息
+	_In_opt_ LPCWSTR lpCaption,     // 对话框标题
+	_In_ UINT uType                 // 对话框的内容和行为
+	) = MessageBoxW;
+
+extern "C" __declspec(dllexport)int WINAPI NewMessageBoxW(
+	_In_opt_ HWND hWnd,             // 要创建的消息框的所有者窗口的句柄
+	_In_opt_ LPCWSTR lpText,        // 要显示的消息
+	_In_opt_ LPCWSTR lpCaption,     // 对话框标题
+	_In_ UINT uType                 // 对话框的内容和行为
+)
+{
+	printf("\n\n****************************************\n");
+	printf("MessageBoxW Hooked\n");
+	GetLocalTime(&st);
+	printf("DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+	// 使用%ls格式说明符输出宽字符字符串
+	printf("lpText: %ls\n", lpText);
+	printf("lpCaption: %ls\n", lpCaption);
+	printf("uType: %u\n", uType); // 使用%u格式说明符输出UINT类型
+	//printf("uType: %u (%s)\n", uType, GetMessageBoxStyleName(uType)); // 输出样式参数及其含义
+	GetProcessInfo();
+	printf("****************************************\n\n");
+	// 调用原始的函数，此处更改了弹窗内容
+	return OldMessageBoxW(NULL, L"new MessageBoxW", L"Hooked", MB_OK);
+	// return OldMessageBoxW(hWnd, lpText, lpCaption, uType);
+}
 
 
 /*
@@ -378,7 +486,7 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 		std::cout << "Number of bytes read (out parameter): 0x" << lpNumberOfBytesRead << std::endl;
 		std::cout << "Overlapped structure address: 0x" << lpOverlapped << std::endl;
 		*/
-		
+
 		// 判断操作范围是否有多个文件夹
 		if (accessedFolders.size() > 1) {
 
@@ -407,7 +515,7 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 		}
 
 		// printf("******************************************\n\n");
-		
+
 		mtx.unlock();
 	}
 	return result;
@@ -1471,6 +1579,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 		DetourTransactionBegin();
 		DetourUpdateThread(GetCurrentThread());
 
+		// 弹窗操作
+		DetourAttach(&(PVOID&)OldMessageBoxW, NewMessageBoxW);
+		DetourAttach(&(PVOID&)OldMessageBoxA, NewMessageBoxA);
+
 		// 文件操作
 		DetourAttach(&(PVOID&)OldCreateFile, NewCreateFile);
 		DetourAttach(&(PVOID&)OldCloseHandle, NewCloseHandle);
@@ -1505,6 +1617,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 	case DLL_PROCESS_DETACH:
 		DetourTransactionBegin();
 		DetourUpdateThread(GetCurrentThread());
+
+		// 弹窗操作
+		DetourDetach(&(PVOID&)OldMessageBoxW, NewMessageBoxW);
+		DetourDetach(&(PVOID&)OldMessageBoxA, NewMessageBoxA);
 
 		// 文件操作
 		DetourDetach(&(PVOID&)OldCreateFile, NewCreateFile);
