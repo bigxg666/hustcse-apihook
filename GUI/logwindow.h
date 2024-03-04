@@ -31,7 +31,9 @@ private slots:
 private:
     Ui::LogWindow *ui;
     QStandardItemModel *logModel;
+    // log.txt的绝对路径
     QString logFilePath = "C:/Users/zhuor/Desktop/secure_design/Test_GUI/GUI/log.txt";
+
     void loadLogContent();
     void filterLogContent();
 };

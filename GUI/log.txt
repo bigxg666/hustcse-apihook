@@ -143,3 +143,13 @@
                                 参数名: hHeap, 内容- Addr: 0x000002D62A940000
                                 参数名: dwFlags, 内容- Value: 0x0
                                 参数名: dwBytes, 内容- Value: 0x78
+[2024-3-4 22:6:42] [信息] begin monitor.
+[2024-3-4 22:6:44] [截获] 该程序使用了函数: HeapCreate
+                                参数名: hHeap, 内容- Addr: 0x000001E62BE90000
+                                参数名: fIOoptions, 内容- Value: 0x1
+                                参数名: dwInitialSize, 内容- Value: 0xa000
+                                参数名: dwMaximumSize, 内容- Value: 0x64000
+[2024-3-4 22:6:44] [截获] 该程序使用了函数: HeapAlloc
+                                参数名: hHeap, 内容- Addr: 0x000001E62BE90000
+                                参数名: dwFlags, 内容- Value: 0x0
+                                参数名: dwBytes, 内容- Value: 0x78
