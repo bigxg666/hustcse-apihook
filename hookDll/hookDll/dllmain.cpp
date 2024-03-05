@@ -1131,9 +1131,10 @@ extern "C" __declspec(dllexport)BOOL WINAPI NewHeapFree(
 	DWORD dwFlags,
 	LPVOID lpMemory
 ) {
+	int judge = 0;
 	if (recordedHeapHandles.find(hHeap) != recordedHeapHandles.end())
 	{
-		
+		judge = 1;
 	}
 	else {
 		return OldHeapFree(hHeap, dwFlags, lpMemory);
@@ -1144,15 +1145,17 @@ extern "C" __declspec(dllexport)BOOL WINAPI NewHeapFree(
 	pData->type = LOG_CUSTOM;
 
 	strcpy(pData->funcName, "HeapFree");
-	pData->argNum = 3;
+	pData->argNum = 4;
 
 	strcpy(pData->argName[0], "hHeap");
 	strcpy(pData->argName[1], "dwFlags");
 	strcpy(pData->argName[2], "lpMemory");
+	strcpy(pData->argName[3], "judge");
 
 	sprintf(pData->argData[0], "Addr: 0x%p", hHeap);
 	sprintf(pData->argData[1], "Value: 0x%x", dwFlags);
 	sprintf(pData->argData[2], "Addr: 0x%p", lpMemory);
+	sprintf(pData->argData[3], "HeapCreate and HeapFree is consistent!");
 
 	update();
 
