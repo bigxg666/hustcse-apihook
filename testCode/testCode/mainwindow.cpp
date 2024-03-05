@@ -5,7 +5,7 @@
 #include <WS2tcpip.h>
 #include<winsock.h>
 #pragma comment(lib, "ws2_32.lib")  //加载 ws2_32.dll
-#define PAGE_SIZE  4096
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -111,17 +111,43 @@ void MainWindow::on_pushButton_5_clicked()
     CallMsgBox(L"注册表已关闭");
 }
 
-
+// 堆异常操作
 void MainWindow::on_pushButton_6_clicked()
 {
-    HANDLE hHeap = HeapCreate(HEAP_NO_SERIALIZE, 100, 100);
-    if (hHeap != NULL) {
-        auto hptest = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, 100);
-        auto hptest2 = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, 100);
-        HeapFree(hHeap, 0, hptest);
-        HeapDestroy(hHeap);
-        CallMsgBox(L"Destroy 堆时不释放Alloc");
+    const int PAGE_SIZE = 4096;
+    HANDLE hHeap = HeapCreate(HEAP_NO_SERIALIZE, PAGE_SIZE * 5, PAGE_SIZE * 50);
+    CallMsgBox(L"尝试创建堆...");
+    if (hHeap == NULL) {
+        CallMsgBox(L"堆创建失败！");
+        return;
     }
+    CallMsgBox(L"成功创建堆！");
+
+    CallMsgBox(L"尝试分配堆内存...");
+    int* ptr = (int*)HeapAlloc(hHeap, 0, sizeof(int) * 20);
+    if (ptr == NULL) {
+        CallMsgBox(L"堆内存分配失败！");
+        return;
+    }
+    CallMsgBox(L"成功分配堆内存！");
+
+    for (int i = 0; i < 20; ++i) {
+        ptr[i] = i;
+    }
+
+    if (!HeapFree(hHeap, 0, ptr)) {
+        CallMsgBox(L"第一次释放堆内存失败！");
+        return;
+    }
+    CallMsgBox(L"第一次释放堆内存！");
+
+    if (!HeapFree(hHeap, 0, ptr)) {
+        CallMsgBox(L"第二次释放堆内存失败！");
+        return;
+    }
+    CallMsgBox(L"第二次释放堆内存！");
+    HeapDestroy(hHeap);
+    CallMsgBox(L"堆已被销毁！");
 }
 
 
