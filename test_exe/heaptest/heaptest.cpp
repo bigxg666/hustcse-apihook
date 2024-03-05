@@ -35,7 +35,6 @@ int main() {
     }
 	printf("第一次释放堆内存\n");
 
-	/*
     printf("按回车释放第二次内存\n");
     getchar();
 
@@ -44,7 +43,6 @@ int main() {
         return 1;
     }
 	printf("第二次释放堆内存\n\n");
-	*/
 
 	printf("按回车销毁堆\n");
 	getchar();

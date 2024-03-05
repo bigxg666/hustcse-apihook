@@ -1134,6 +1134,7 @@ extern "C" __declspec(dllexport)BOOL WINAPI NewHeapFree(
 	int judge = 0;
 	if (recordedHeapHandles.find(hHeap) != recordedHeapHandles.end()) {
 		judge = 1;
+		recordedHeapHandles.erase(hHeap);
 	}
 	else {
 		return OldHeapFree(hHeap, dwFlags, lpMemory);
