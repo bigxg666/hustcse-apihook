@@ -69,7 +69,7 @@ void MainWindow::on_pushButton_4_clicked()
     memcpy(buf1, "Hello World",12);
     WriteFile(hFile, buf1, 12, &sz, NULL);
     FlushFileBuffers(hFile);
-    CallMsgBox(L"已将Hello World写入文件");
+    CallMsgBox(L"已将Hello World写入文件test.txt");
     LONG lDistance = 0;
     SetFilePointer(hFile, lDistance, NULL, FILE_BEGIN);
     char buf[20];
@@ -97,7 +97,7 @@ void MainWindow::on_pushButton_5_clicked()
     RegOpenKeyExA(HKEY_LOCAL_MACHINE, keyname, 0, KEY_ALL_ACCESS, &hk2);
     CallMsgBox(L"已打开注册表");
     RegSetValueExA(hk2, "Hello", 0, REG_SZ, (PBYTE)"Hello HUST", 11);
-    CallMsgBox(L"注册表已设值Hello Hust");
+    CallMsgBox(L"注册表已设值Hello HUST");
     RegQueryValueExA(hk2, "Hello", NULL, &dwType, (BYTE*)buffer, &dwLen);
     CallMsgBox(L"查询Hello");
     res = RegDeleteValue(hk, L"kingqaquuu");
@@ -136,6 +136,10 @@ void MainWindow::on_pushButton_6_clicked()
 void MainWindow::on_pushButton_7_clicked()
 {
     HANDLE hOpenFile = (HANDLE)CreateFile(L"a.exe", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, NULL, NULL);
+    char buffer[100] = "Hello, World!";
+    DWORD bytesWritten=0;
+    WriteFile(hOpenFile,buffer,sizeof(buffer),&bytesWritten,NULL);
+    CallMsgBox(L"已将Hello World写入a.exe");
     CloseHandle(hOpenFile);
 }
 
@@ -144,8 +148,19 @@ void MainWindow::on_pushButton_7_clicked()
 
 void MainWindow::on_pushButton_8_clicked()
 {
-    HANDLE hOpenFile = (HANDLE)CreateFile(L"hello.exe", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_ALWAYS, NULL, NULL);
-    CloseHandle(hOpenFile);
+    HANDLE hFile = CreateFileA(
+        "test.txt",
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        NULL,
+        CREATE_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL
+        );
+    CloseHandle(hFile);
+    if(CopyFile(L"test.txt",L"a.txt",FALSE)){
+    CallMsgBox(L"已复制test.txt");
+    }
 }
 
 
@@ -207,6 +222,7 @@ void MainWindow::on_pushButton_10_clicked()
 {
     HKEY hKey = NULL;
     size_t lRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, (LPWSTR)L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", 0, KEY_READ, &hKey);
+    CallMsgBox(L"打开启动项注册表");
     RegCloseKey(hKey);
 }
 
@@ -214,6 +230,10 @@ void MainWindow::on_pushButton_10_clicked()
 void MainWindow::on_pushButton_11_clicked()
 {
     HANDLE hOpenFile = (HANDLE)CreateFile(L".\\testFolder\\test.txt", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, NULL, NULL);
+    char buf[20];
+    DWORD dw = 0;
+    ReadFile(hOpenFile,buf,sizeof(buf),&dw,NULL);
+    CallMsgBox(L"已读testFolder下test.txt文件");
     CloseHandle(hOpenFile);
 }
 

@@ -2,6 +2,10 @@
 
 用qtcreator打开testCode\testCode.pro.user即可打开项目
 
+源码位于\testCode
+
 完整项目位于\build-testCode-Desktop_Qt_6_6_2_MinGW_64_bit-Release\testCode\testCode.exe
 
-源码位于\testCode
+将所需dll文件打包成一个文件后的exe文件位于workspace文件夹，可独立运行workspace\testCode.exe
+
+测试操作多个文件夹时，请在testCode.exe所在目录创建testFolder文件夹

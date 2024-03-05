@@ -103,8 +103,8 @@ public:
         pushButton_10->setText(QCoreApplication::translate("MainWindow", "\346\263\250\345\206\214\350\241\250\350\207\252\345\220\257\345\212\250", nullptr));
         pushButton_4->setText(QCoreApplication::translate("MainWindow", "\346\226\207\344\273\266\346\223\215\344\275\234", nullptr));
         pushButton->setText(QCoreApplication::translate("MainWindow", "MessageBoxA", nullptr));
-        pushButton_9->setText(QCoreApplication::translate("MainWindow", "socket\346\223\215\344\275\234", nullptr));
-        pushButton_11->setText(QCoreApplication::translate("MainWindow", "\346\211\223\345\274\200\345\205\266\344\273\226\346\226\207\344\273\266\345\244\271", nullptr));
+        pushButton_9->setText(QCoreApplication::translate("MainWindow", "\347\275\221\347\273\234\346\223\215\344\275\234", nullptr));
+        pushButton_11->setText(QCoreApplication::translate("MainWindow", "\346\223\215\344\275\234\345\244\232\344\270\252\346\226\207\344\273\266\345\244\271", nullptr));
         pushButton_3->setText(QCoreApplication::translate("MainWindow", "\345\240\206\346\223\215\344\275\234", nullptr));
         pushButton_5->setText(QCoreApplication::translate("MainWindow", "\346\263\250\345\206\214\350\241\250\346\223\215\344\275\234", nullptr));
         pushButton_6->setText(QCoreApplication::translate("MainWindow", "\345\240\206\345\274\202\345\270\270\346\223\215\344\275\234", nullptr));
