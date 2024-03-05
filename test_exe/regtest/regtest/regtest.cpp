@@ -28,7 +28,7 @@ int main() {
 
 	// system("pause");
 	printf("修改注册表项的值\n");
-	RegSetValueExA(hk2, "Hello", 0, REG_SZ, (PBYTE)"Hello HUST", 11);
+	RegSetValueExA(hk2, "Hello", 0, REG_SZ, (PBYTE)"Hello_HUST", 11);
 
 	// system("pause");
 	printf("查询注册表项的值\n");

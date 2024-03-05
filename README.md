@@ -71,8 +71,11 @@
   + 修改待监测程序的路径
     + 待监测程序：hustcse-apihook\test_exe\testCode\testCode.exe
 ![alt text](image-1.png)
-  + 运行项目FCInject
-![alt text](image-2.png)
+  + 编译项目FCInject，然后找到项目输出的可执行文件的位置
+![alt text](image-5.png)
+  + 右键可执行文件，**以管理员权限运行**注入程序
+![alt text](屏幕截图(730).png)
+![alt text](image-6.png)
 + 运行日志显示程序
   + 打开hustcse-apihook\ShareMemoryTest\ReadLog.exe
 ![alt text](image-3.png)
@@ -80,6 +83,7 @@
     + 程序刚开始运行时，显示的内容太多，ReadLog的缓冲区会被填满，导致最开始的操作无法被捕获，多进行几次操作即可恢复正常。
   + 点击操作待监测程序，观察ReadLog窗口的变化
 ![alt text](image-4.png)
+
 ### 正式阶段
 
 1. xxxx
@@ -91,7 +95,7 @@
  **优化**：通过修改共享变量的数据结构，**为共享变量设置缓冲区**，在每次读取共享变量时，把上次读取和本次读取的时间间隔内，缓冲区中新增的所有日志消息全都显示出来，**无需再考虑测试程序在短时间内进行大量操作的问题**。
 2. 需要**先运行注入程序**，Dll会在内存中建立一块共享内存区域，然后**再运行日志显示程序**，日志显示程序才能打开共享内存。
 3. 在进行网络部分测试的时候需要并行运行测试服务器（networktest_server用于发送数据）和测试客户端（networktest_client用于接收数据）。
-4. xxxx
+4. 注入程序必须**以管理员权限运行**，否则文件删除与修改、注册表相关操作都将无法进行。
 
 ## 课程设计任务与要求
 

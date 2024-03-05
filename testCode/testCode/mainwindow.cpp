@@ -87,36 +87,28 @@ void MainWindow::on_pushButton_5_clicked()
 {
     HKEY hk = NULL;
     HKEY hk2 = NULL;
-    LPCSTR keyname = "information2104";
+    LPCSTR keyname = "SOFTWARE\\HUST\\Information_2104";
     unsigned long dwType = REG_SZ;
     char buffer[257] = { 0 };
     DWORD dwLen = 256;
-    auto res = RegCreateKeyExA(HKEY_LOCAL_MACHINE, keyname , 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hk, NULL);
-    CallMsgBox(L"创建注册表已执行");
+
+    RegCreateKeyExA(HKEY_LOCAL_MACHINE, keyname , 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hk, NULL);
+    CallMsgBox(L"已创建注册表项");
+
     RegCloseKey(hk);
+    CallMsgBox(L"已关闭注册表项");
+
     RegOpenKeyExA(HKEY_LOCAL_MACHINE, keyname, 0, KEY_ALL_ACCESS, &hk2);
-    CallMsgBox(L"已打开注册表");
-    RegSetValueExA(hk2, "Hello", 0, REG_SZ, (PBYTE)"Hello HUST", 11);
-    CallMsgBox(L"注册表已设值Hello HUST");
+    CallMsgBox(L"已重新打开注册表项");
+
+    RegSetValueExA(hk2, "Hello", 0, REG_SZ, (PBYTE)"Hello_HUST", 11);
+    CallMsgBox(L"注册表项已改为Hello");
+
     RegQueryValueExA(hk2, "Hello", NULL, &dwType, (BYTE*)buffer, &dwLen);
-    CallMsgBox(L"查询Hello");
-    res = RegDeleteValue(hk, L"kingqaquuu");
-    if (res == ERROR_SUCCESS) {
-        CallMsgBox(L"删除成功");
-    }
-    else {
-        CallMsgBox(L"删除失败");
-    }
+    CallMsgBox(L"查询注册表项");
+
     RegCloseKey(hk2);
     CallMsgBox(L"注册表已关闭");
-    //启动项
-    keyname = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run";
-    dwType = REG_SZ;
-    dwLen = 256;
-    res = RegCreateKeyExA(HKEY_LOCAL_MACHINE, keyname, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hk, NULL);
-    CallMsgBox(L"开机启动项已创建");
-    RegCloseKey(hk);
-    CallMsgBox(L"注册表项已关闭");
 }
 
 
@@ -220,10 +212,28 @@ void MainWindow::on_pushButton_9_clicked()
 
 void MainWindow::on_pushButton_10_clicked()
 {
-    HKEY hKey = NULL;
-    size_t lRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, (LPWSTR)L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", 0, KEY_READ, &hKey);
-    CallMsgBox(L"打开启动项注册表");
-    RegCloseKey(hKey);
+    HKEY hk = NULL;
+    HKEY hk2 = NULL;
+    LPCSTR keyname = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run";
+    unsigned long dwType = REG_SZ;
+    char buffer[257] = { 0 };
+    DWORD dwLen = 256;
+
+    // 启动项
+    RegCreateKeyExA(HKEY_LOCAL_MACHINE, keyname, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hk, NULL);
+    CallMsgBox(L"创建启动项注册表");
+
+    RegCloseKey(hk);
+    CallMsgBox(L"关闭启动项注册表");
+
+    RegOpenKeyExA(HKEY_LOCAL_MACHINE, keyname, 0, KEY_ALL_ACCESS, &hk2);
+    CallMsgBox(L"重新打开启动项注册表");
+
+    RegSetValueExA(hk2, "Hello", 0, REG_SZ, (PBYTE)"Hello HUST", 11);
+    CallMsgBox(L"修改启动项注册表");
+
+    RegCloseKey(hk2);
+    CallMsgBox(L"再次关闭启动项注册表");
 }
 
 

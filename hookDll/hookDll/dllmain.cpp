@@ -29,7 +29,7 @@
 #define TEST_REG
 #define TEST_SOCKET
 
-
+// 常量定义
 const BYTE LOG_UNINIT = 0xFF;
 
 const BYTE LOG_INFO = 0x00;
@@ -99,69 +99,8 @@ struct FileData {
 // 全局变量定义
 std::mutex mtx;											// 信号量
 SYSTEMTIME st;											// 系统时间
-std::set<std::string> accessedFolders;					// 存储已经访问过的文件夹路径
-std::unordered_set<std::string> fileContents;			// 添加一个全局集合，用于存储已经读取的文件内容
 
-// 获取文件夹路径及文件后缀等信息
-FileData GetFileData(HANDLE hFile) {
-	FileData result;
-
-	// 会引起CreateFile操作，但在NewCreateFile函数中进行了过滤
-	TCHAR szFileName[MAX_PATH];
-	if (GetFinalPathNameByHandle(hFile, szFileName, MAX_PATH, FILE_NAME_NORMALIZED) != 0) {
-		std::wstring wsFileName(szFileName);
-		std::string fileName(wsFileName.begin(), wsFileName.end());
-		result.filename = fileName;
-		// 去除路径前缀 \\?\ 
-		if (result.filename.substr(0, 4) == "\\\\?\\") {
-			result.filename = result.filename.substr(4);
-		}
-
-		// 从文件名中提取文件扩展名
-		size_t dotPos = result.filename.find_last_of('.');
-		if (dotPos != std::string::npos) {
-			result.fileExtension = result.filename.substr(dotPos);
-		}
-		else {
-			GetLocalTime(&(pData->st));
-			pData->type = LOG_ERROR;
-			printf("无法提取文件扩展名！\n");
-			sprintf(pData->message, "无法提取文件扩展名！");
-			update();
-			// std::cout << "Unable to extract the file extension." << std::endl;
-		}
-			
-
-		// 获取文件夹路径
-		size_t found = result.filename.find_last_of("\\/");
-		if (found != std::string::npos) {
-			result.folderPath = result.filename.substr(0, found);
-			// 将文件夹路径添加到已访问文件夹集合中
-			accessedFolders.insert(result.folderPath);
-			// 打印访问过的文件夹
-			// std::cout << "Folder path: " << result.folderPath << std::endl;
-		}
-		else {
-			GetLocalTime(&(pData->st));
-			pData->type = LOG_ERROR;
-			printf("无法提取文件夹路径！\n");
-			sprintf(pData->message, "无法提取文件夹路径！");
-			update();
-			// std::cout << "Unable to extract the folder path." << std::endl;
-		}
-			
-	}
-	else {
-		GetLocalTime(&(pData->st));
-		pData->type = LOG_ERROR;
-		printf("无法获取文件名！\n");
-		sprintf(pData->message, "无法获取文件名！");
-		update();
-		// std::cout << "Unable to get the file name." << std::endl;
-	}
-	return result;
-}
-
+// 全局函数定义
 // 获取当前进程的名称和Exe文件信息
 void GetProcessInfo() {
 	// 获取当前进程的句柄
@@ -221,7 +160,9 @@ const char* GetMessageBoxStyleName(UINT uType) {
 }
 */
 
-// 弹窗操作
+
+
+// 弹窗操作监控
 // 定义和引入需要Hook的函数和替换的函数
 static int (WINAPI* OldMessageBoxA)(
 	_In_opt_ HWND hWnd,             // 要创建的消息框的所有者窗口的句柄
@@ -337,10 +278,74 @@ extern "C" __declspec(dllexport)int WINAPI NewMessageBoxW(
 }
 
 
+
 /*
 * 实现文件操作监控
 * CreateFile CloseHandle ReadFile WriteFile DeleteFile CopyFile
 */
+std::unordered_set<std::string> fileContents;			// 添加一个全局集合，用于存储已经读取的文件内容
+std::set<std::string> accessedFolders;					// 存储已经访问过的文件夹路径
+
+// 获取文件夹路径及文件后缀等信息
+FileData GetFileData(HANDLE hFile) {
+	FileData result;
+	accessedFolders.clear();
+
+	// 会引起CreateFile操作，但在NewCreateFile函数中进行了过滤
+	TCHAR szFileName[MAX_PATH];
+	if (GetFinalPathNameByHandle(hFile, szFileName, MAX_PATH, FILE_NAME_NORMALIZED) != 0) {
+		std::wstring wsFileName(szFileName);
+		std::string fileName(wsFileName.begin(), wsFileName.end());
+		result.filename = fileName;
+		// 去除路径前缀 \\?\ 
+		if (result.filename.substr(0, 4) == "\\\\?\\") {
+			result.filename = result.filename.substr(4);
+		}
+
+		// 从文件名中提取文件扩展名
+		size_t dotPos = result.filename.find_last_of('.');
+		if (dotPos != std::string::npos) {
+			result.fileExtension = result.filename.substr(dotPos);
+		}
+		else {
+			GetLocalTime(&(pData->st));
+			pData->type = LOG_ERROR;
+			printf("无法提取文件扩展名！\n");
+			sprintf(pData->message, "无法提取文件扩展名！");
+			update();
+			// std::cout << "Unable to extract the file extension." << std::endl;
+		}
+
+
+		// 获取文件夹路径
+		size_t found = result.filename.find_last_of("\\/");
+		if (found != std::string::npos) {
+			result.folderPath = result.filename.substr(0, found);
+			// 将文件夹路径添加到已访问文件夹集合中
+			accessedFolders.insert(result.folderPath);
+			// 打印访问过的文件夹
+			// std::cout << "Folder path: " << result.folderPath << std::endl;
+		}
+		else {
+			GetLocalTime(&(pData->st));
+			pData->type = LOG_ERROR;
+			printf("无法提取文件夹路径！\n");
+			sprintf(pData->message, "无法提取文件夹路径！");
+			update();
+			// std::cout << "Unable to extract the folder path." << std::endl;
+		}
+
+	}
+	else {
+		GetLocalTime(&(pData->st));
+		pData->type = LOG_ERROR;
+		printf("无法获取文件名！\n");
+		sprintf(pData->message, "无法获取文件名！");
+		update();
+		// std::cout << "Unable to get the file name." << std::endl;
+	}
+	return result;
+}
 
 // 过滤字符串
 bool strFilter(LPCTSTR filename) {
@@ -851,6 +856,7 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewDeleteFile(LPCTSTR lpFileName) {
 		// std::cout << "File deleted successfully" << std::endl;
 	}
 	else {
+		pData->type = LOG_ERROR;
 		printf("且删除失败！\n");
 		sprintf(pData->message + strlen(pData->message), "且删除失败！");
 		// std::cout << "Failed to delete file. Error code: " << GetLastError() << std::endl;
@@ -863,7 +869,7 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewDeleteFile(LPCTSTR lpFileName) {
 	return result;
 }
 
-// 监测是否存在自我复制的情况
+// 自我复制
 static BOOL(WINAPI* OldCopyFile)(
 	LPCTSTR lpExistingFileName,          // 现有文件名称
 	LPCTSTR lpNewFileName,               // 新文件名称
@@ -928,6 +934,7 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewCopyFile(
 	}
 	else {
 		// std::cout << "Failed to copy file." << std::endl;
+		pData->type = LOG_ERROR;
 		printf("且复制失败！\n");
 		sprintf(pData->message + strlen(pData->message), "且复制失败！");
 	}
@@ -1250,34 +1257,39 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegCreateKeyExA(
 	}
 	*/
 
-	// RegOpenKeyExA函数：打开一个已存在的注册表项，返回值为ERROR_SUCCESS表示打开成功。
-	// 调用RegOpenKeyExA函数打开指定的注册表项
-
-	// 返回值不为ERROR_SUCCESS，说明指定的注册表项在函数调用的时候并不存在，因此认为程序存在新增注册表项操作
-	auto judge = OldRegOpenKeyExA(hKey, lpSubKey, 0, samDesired, phkResult);
-	if (judge != ERROR_SUCCESS) {
-		GetLocalTime(&(pData->st));
-		pData->type = LOG_WARNING;
-		printf("此程序存在新增注册表项操作！\n");
-		sprintf(pData->message, "此程序存在新增注册表项操作！");
-		update();
-	}
-
 	/*
 	* SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run是一个特殊的注册表项。
 	* 这个注册表项包含了一系列的键值对，每一个键值对都对应一个需要在系统启动时自动运行的程序。
 	*/
+
 	// 对比打开的子键名称。若子键为"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"，则说明程序很有可能要修改自启动项。
+
 	if (strcmp(lpSubKey, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run") == 0) {
 		GetLocalTime(&(pData->st));
 		pData->type = LOG_WARNING;
-		printf("此程序存在创建注册表自启动项的操作！\n");
-		sprintf(pData->message, "此程序存在创建注册表自启动项的操作！");
+		printf("此程序可能存在创建注册表自启动项的操作！\n");
+		sprintf(pData->message, "此程序可能存在创建注册表自启动项的操作！");
 		update();
 	}
 
+	LSTATUS status = OldRegCreateKeyExA(hKey, lpSubKey, Reserved, lpClass, dwOptions, samDesired, lpSecurityAttributes, phkResult, lpdwDisposition);
+	GetLocalTime(&(pData->st));
+	pData->type = LOG_WARNING;
+	printf("此程序存在新增注册表项操作，");
+	sprintf(pData->message, "此程序存在新增注册表项操作，");
+	if (status == ERROR_SUCCESS) {
+		printf("且新增成功！\n");
+		sprintf(pData->message + strlen(pData->message), "且新增成功！");
+	}
+	else {
+		pData->type = LOG_ERROR;
+		printf("且新增失败！\n");
+		sprintf(pData->message + strlen(pData->message), "且新增失败！");
+	}
+	update();
+
 	mtx.unlock();
-	return OldRegCreateKeyExA(hKey, lpSubKey, Reserved, lpClass, dwOptions, samDesired, lpSecurityAttributes, phkResult, lpdwDisposition);
+	return status;
 }
 
 extern "C" __declspec(dllexport)LSTATUS WINAPI NewRegCreateKeyEx(
@@ -1330,24 +1342,32 @@ extern "C" __declspec(dllexport)LSTATUS WINAPI NewRegCreateKeyEx(
 
 	update();
 
-	auto judge = OldRegOpenKeyEx(hKey, lpSubKey, 0, samDesired, phkResult);
-	if (judge != ERROR_SUCCESS) {
-		GetLocalTime(&(pData->st));
-		pData->type = LOG_WARNING;
-		printf("此程序存在新增注册表项操作！\n");
-		sprintf(pData->message, "此程序存在新增注册表项操作！");
-		update();
-	}
-
 	if (strcmp(buffer, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run") == 0) {
 		GetLocalTime(&(pData->st));
 		pData->type = LOG_WARNING;
-		printf("此程序存在创建注册表自启动项的操作！\n");
-		sprintf(pData->message, "此程序存在创建注册表自启动项的操作！");
+		printf("此程序可能存在创建注册表自启动项的操作！\n");
+		sprintf(pData->message, "此程序可能存在创建注册表自启动项的操作！");
 		update();
 	}
 
-	return OldRegCreateKeyEx(hKey, lpSubKey, Reserved, lpClass, dwOptions, samDesired, lpSecurityAttributes, phkResult, lpdwDisposition);
+	LSTATUS status = OldRegCreateKeyEx(hKey, lpSubKey, Reserved, lpClass, dwOptions, samDesired, lpSecurityAttributes, phkResult, lpdwDisposition);
+	GetLocalTime(&(pData->st));
+	pData->type = LOG_WARNING;
+	printf("此程序存在新增注册表项操作，");
+	sprintf(pData->message, "此程序存在新增注册表项操作，");
+	if (status == ERROR_SUCCESS) {
+		printf("且新增成功！\n");
+		sprintf(pData->message + strlen(pData->message), "且新增成功！");
+	}
+	else {
+		pData->type = LOG_ERROR;
+		printf("且新增失败！\n");
+		sprintf(pData->message + strlen(pData->message), "且新增失败！");
+	}
+	update();
+
+	mtx.unlock();
+	return status;
 }
 
 // 打开注册表的操作
@@ -1387,16 +1407,27 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegOpenKeyExA(
 	std::cout << "phkResult: " << phkResult << std::endl;
 	*/
 
+	LSTATUS status = OldRegOpenKeyExA(hKey, lpSubKey, ulOptions, samDesired, phkResult);
+
 	if (strcmp(lpSubKey, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run") == 0) {
 		GetLocalTime(&(pData->st));
 		pData->type = LOG_WARNING;
-		printf("此程序存在读取注册表自启动项的操作！\n");
-		sprintf(pData->message, "此程序存在读取注册表自启动项的操作！");
+		printf("此程序可能存在打开注册表自启动项的操作！\n");
+		sprintf(pData->message, "此程序可能存在打开注册表自启动项的操作！");
+		update();
+	}
+
+	if (status != ERROR_SUCCESS) {
+		// 打开注册表项失败
+		GetLocalTime(&(pData->st));
+		pData->type = LOG_ERROR;
+		printf("打开注册表项失败！\n");
+		sprintf(pData->message, "打开注册表项失败！");
 		update();
 	}
 
 	mtx.unlock();
-	return OldRegOpenKeyExA(hKey, lpSubKey, ulOptions, samDesired, phkResult);
+	return status;
 }
 
 extern "C" __declspec(dllexport)LSTATUS WINAPI NewRegOpenKeyEx(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult) {
@@ -1428,16 +1459,27 @@ extern "C" __declspec(dllexport)LSTATUS WINAPI NewRegOpenKeyEx(HKEY hKey, LPCWST
 
 	update();
 
+	LSTATUS status = OldRegOpenKeyEx(hKey, lpSubKey, ulOptions, samDesired, phkResult);
+
 	if (strcmp(buffer, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run") == 0) {
 		GetLocalTime(&(pData->st));
 		pData->type = LOG_WARNING;
-		printf("此程序存在读取注册表自启动项的操作！\n");
-		sprintf(pData->message, "此程序存在读取注册表自启动项的操作！");
+		printf("此程序可能存在打开注册表自启动项的操作！\n");
+		sprintf(pData->message, "此程序可能存在打开注册表自启动项的操作！");
+		update();
+	}
+
+	if (status != ERROR_SUCCESS) {
+		// 打开注册表项失败
+		GetLocalTime(&(pData->st));
+		pData->type = LOG_ERROR;
+		printf("打开注册表项失败！\n");
+		sprintf(pData->message, "打开注册表项失败！");
 		update();
 	}
 
 	mtx.unlock();
-	return OldRegOpenKeyEx(hKey, lpSubKey, ulOptions, samDesired, phkResult);
+	return status;
 }
 
 // 查询注册表键值的操作
@@ -1570,25 +1612,26 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegSetValueExA(
 	std::cout << "cbData: " << cbData << std::endl;
 	*/
 
-	/*
-	* RegSetValueExA函数：
-	* 设置注册表项下指定值的数据和类型。
-	*/
-
 	// 调用RegSetValueExA函数设置指定的注册表项的值，并将返回的状态保存在status变量中
-	auto status = OldRegSetValueExA(hKey, lpValueName, Reserved, dwType, lsendData, cbData);
+	LSTATUS status = OldRegSetValueExA(hKey, lpValueName, Reserved, dwType, lsendData, cbData);
 
-	std::cout << status << std::endl;
+	GetLocalTime(&(pData->st));
+	pData->type = LOG_WARNING;
+	printf("此程序存在修改注册表项的操作，");
+	sprintf(pData->message, "此程序存在修改注册表项的操作，");
 
 	// 如果返回值为ERROR_SUCCESS，说明函数成功执行（也就是修改了注册表项的值）
 	if (status == ERROR_SUCCESS) {
-		GetLocalTime(&(pData->st));
-		pData->type = LOG_WARNING;
-		printf("此程序存在修改注册表项的操作！\n");
-		sprintf(pData->message, "此程序存在修改注册表项的操作！");
-		update();
+		printf("且修改成功！\n");
+		sprintf(pData->message + strlen(pData->message), "且修改成功！");
+	}
+	else {
+		pData->type = LOG_ERROR;
+		printf("且修改失败！\n");
+		sprintf(pData->message + strlen(pData->message), "且修改失败！");
 	}
 
+	update();
 	mtx.unlock();
 	return status;
 }
@@ -1624,15 +1667,24 @@ extern "C" __declspec(dllexport)LSTATUS WINAPI NewRegSetValueEx(HKEY hKey, LPCWS
 
 	update();
 
-	auto status = OldRegSetValueEx(hKey, lpValueName, Reserved, dwType, lpData, cbData);
+	LSTATUS status = OldRegSetValueEx(hKey, lpValueName, Reserved, dwType, lpData, cbData);
 
+	GetLocalTime(&(pData->st));
+	pData->type = LOG_WARNING;
+	printf("此程序存在修改注册表项的操作，");
+	sprintf(pData->message, "此程序存在修改注册表项的操作，");
+
+	// 如果返回值为ERROR_SUCCESS，说明函数成功执行（也就是修改了注册表项的值）
 	if (status == ERROR_SUCCESS) {
-		GetLocalTime(&(pData->st));
-		pData->type = LOG_WARNING;
-		printf("此程序存在修改注册表项的操作！\n");
-		sprintf(pData->message, "此程序存在修改注册表项的操作！");
-		update();
+		printf("且修改成功！\n");
+		sprintf(pData->message + strlen(pData->message), "且修改成功！");
 	}
+	else {
+		pData->type = LOG_ERROR;
+		printf("且修改失败！\n");
+		sprintf(pData->message + strlen(pData->message), "且修改失败！");
+	}
+	update();
 
 	mtx.unlock();
 	return status;
@@ -1655,12 +1707,23 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegCloseKey(
 
 	update();
 
+	LSTATUS status = OldRegCloseKey(hKey);
+
+	if (status != ERROR_SUCCESS) {
+		// 关闭注册表项失败
+		GetLocalTime(&(pData->st));
+		pData->type = LOG_ERROR;
+		printf("关闭注册表项失败！\n");
+		sprintf(pData->message, "关闭注册表项失败！");
+		update();
+	}
+
 	/*
 	std::cout << "hKey: " << hKey << std::endl;
 	*/
 
 	mtx.unlock();
-	return OldRegCloseKey(hKey);
+	return status;
 }
 
 
