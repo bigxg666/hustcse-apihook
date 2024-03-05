@@ -1132,15 +1132,24 @@ extern "C" __declspec(dllexport)BOOL WINAPI NewHeapFree(
 	LPVOID lpMemory
 ) {
 	int judge = 0;
-	if (recordedHeapHandles.find(hHeap) != recordedHeapHandles.end()) {
+	if (recordedHeapHandles.find(hHeap) != recordedHeapHandles.end())
+	{
 		judge = 1;
 		recordedHeapHandles.erase(hHeap);
+	
 	}
 	else {
 		return OldHeapFree(hHeap, dwFlags, lpMemory);
 	}
 	
 	mtx.lock();
+
+	GetLocalTime(&(pData->st));
+	pData->type = LOG_WARNING;
+	printf("正在进行堆的释放！\n");
+	sprintf(pData->message, "正在进行堆的释放！");
+	update();
+
 	GetLocalTime(&(pData->st));
 	pData->type = LOG_CUSTOM;
 
@@ -1155,7 +1164,13 @@ extern "C" __declspec(dllexport)BOOL WINAPI NewHeapFree(
 	sprintf(pData->argData[0], "Addr: 0x%p", hHeap);
 	sprintf(pData->argData[1], "Value: 0x%x", dwFlags);
 	sprintf(pData->argData[2], "Addr: 0x%p", lpMemory);
-	sprintf(pData->argData[3], "\"HeapCreate and HeapFree is consistent!\"");
+	if (judge == 1) {
+		sprintf(pData->argData[3], "HeapCreate and HeapFree is consistent!");
+	}
+	else {
+		sprintf(pData->argData[3], "HeapCreate and HeapFree is consistent!");
+	}
+	
 
 	update();
 
