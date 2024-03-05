@@ -1168,7 +1168,7 @@ extern "C" __declspec(dllexport)BOOL WINAPI NewHeapFree(
 		sprintf(pData->argData[3], "HeapCreate and HeapFree is consistent!");
 	}
 	else {
-		sprintf(pData->argData[3], "HeapCreate and HeapFree is consistent!");
+		sprintf(pData->argData[3], "HeapCreate and HeapFree is not consistent!");
 	}
 	
 
