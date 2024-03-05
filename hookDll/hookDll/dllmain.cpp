@@ -90,14 +90,17 @@ void update() {
 }
 
 // 文件信息结构体
-typedef struct FileData {
-	std::string filename;				// 完整文件名
-	std::string folderPath;				// 文件夹路径
-	std::string fileExtension;			// 文件扩展名
-}FileData;
-std::set<std::string> accessedFolders;	// 存储已经访问过的文件夹路径
+struct FileData {
+	std::string filename;								// 完整文件名
+	std::string folderPath;								// 文件夹路径
+	std::string fileExtension;							// 文件扩展名
+};
 
-std::unordered_set<std::string> fileContents;// 添加一个全局集合，用于存储已经读取的文件内容
+// 全局变量定义
+std::mutex mtx;											// 信号量
+SYSTEMTIME st;											// 系统时间
+std::set<std::string> accessedFolders;					// 存储已经访问过的文件夹路径
+std::unordered_set<std::string> fileContents;			// 添加一个全局集合，用于存储已经读取的文件内容
 
 // 获取文件夹路径及文件后缀等信息
 FileData GetFileData(HANDLE hFile) {
@@ -127,6 +130,7 @@ FileData GetFileData(HANDLE hFile) {
 			update();
 			// std::cout << "Unable to extract the file extension." << std::endl;
 		}
+			
 
 		// 获取文件夹路径
 		size_t found = result.filename.find_last_of("\\/");
@@ -145,6 +149,7 @@ FileData GetFileData(HANDLE hFile) {
 			update();
 			// std::cout << "Unable to extract the folder path." << std::endl;
 		}
+			
 	}
 	else {
 		GetLocalTime(&(pData->st));
@@ -156,10 +161,6 @@ FileData GetFileData(HANDLE hFile) {
 	}
 	return result;
 }
-
-// 全局变量定义
-std::mutex mtx;							// 信号量
-SYSTEMTIME st;							// 系统时间
 
 // 获取当前进程的名称和Exe文件信息
 void GetProcessInfo() {
@@ -183,7 +184,7 @@ void GetProcessInfo() {
 	// printf("当前进程名称：%s\n", processName);
 	GetLocalTime(&(pData->st));
 	pData->type = LOG_INFO;
-	sprintf(pData->message, "当前进程名称：%s", processName);
+	sprintf(pData->message, "当前进程名称：\"%s\"", processName);
 	update();
 }
 
@@ -248,8 +249,8 @@ extern "C" __declspec(dllexport)int WINAPI NewMessageBoxA(
 	strcpy(pData->argName[3], "uType");
 
 	sprintf(pData->argData[0], "Addr: %p", hWnd);
-	sprintf(pData->argData[1], "Value: %s", lpText);
-	sprintf(pData->argData[2], "Value: %s", lpCaption);
+	sprintf(pData->argData[1], "Value: \"%s\"", lpText);
+	sprintf(pData->argData[2], "Value: \"%s\"", lpCaption);
 	sprintf(pData->argData[3], "Value: 0x%x", uType);
 
 	update();
@@ -341,6 +342,35 @@ extern "C" __declspec(dllexport)int WINAPI NewMessageBoxW(
 * CreateFile CloseHandle ReadFile WriteFile DeleteFile CopyFile
 */
 
+// 过滤字符串
+bool strFilter(LPCTSTR filename) {
+	return
+		wcsstr(filename, L"log") != nullptr ||
+		wcsstr(filename, L".config") != nullptr ||
+		wcsstr(filename, L"MountPointManage") != nullptr ||
+		wcsstr(filename, L"Cache") != nullptr ||
+		wcsstr(filename, L"cache") != nullptr;
+}
+
+bool strFilter(LPCSTR filename) {
+	std::string str = filename;
+	return
+		str.find("log") != std::string::npos ||
+		str.find(".config") != std::string::npos ||
+		str.find("MountPointManage") != std::string::npos ||
+		str.find("Cache") != std::string::npos ||
+		str.find("cache") != std::string::npos;
+}
+
+bool strFilter(std::string filename) {
+	return
+		filename.find("log") != std::string::npos ||
+		filename.find(".config") != std::string::npos ||
+		filename.find("MountPointManage") != std::string::npos ||
+		filename.find("Cache") != std::string::npos ||
+		filename.find("cache") != std::string::npos;
+}
+
 // 创建文件
 static HANDLE(WINAPI* OldCreateFile)(
 	LPCTSTR lpFileName,							// 文件名
@@ -361,8 +391,8 @@ extern "C" __declspec(dllexport) HANDLE WINAPI NewCreateFile(
 	DWORD dwFlagsAndAttributes,					// 文件属性
 	HANDLE hTemplateFile						// 模板文件句柄
 ) {
-	if (wcsstr(lpFileName, L"log") != nullptr || wcsstr(lpFileName, L".config") != nullptr || wcsstr(lpFileName, L"MountPointManage") != nullptr) {
-		// 如果包含需要过滤的字符串，则直接返回原函数
+	// 如果包含需要过滤的字符串或文件，则直接返回原函数
+	if (strFilter(lpFileName)) {
 		return OldCreateFile(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 	}
 
@@ -423,6 +453,59 @@ extern "C" __declspec(dllexport) HANDLE WINAPI NewCreateFile(
 	return OldCreateFile(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 }
 
+static HANDLE(WINAPI* OldCreateFileA)(
+	LPCSTR lpFileName,
+	DWORD dwDesiredAccess,
+	DWORD dwShareMode,
+	LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+	DWORD dwCreationDisposition,
+	DWORD dwFlagsAndAttributes,
+	HANDLE hTemplateFile
+	) = CreateFileA;
+
+extern "C" __declspec(dllexport) HANDLE WINAPI NewCreateFileA(
+	LPCSTR lpFileName,
+	DWORD dwDesiredAccess,
+	DWORD dwShareMode,
+	LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+	DWORD dwCreationDisposition,
+	DWORD dwFlagsAndAttributes,
+	HANDLE hTemplateFile
+) {
+	// 如果包含需要过滤的字符串，则直接返回原函数
+	if (strFilter(lpFileName)) {
+		return OldCreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+	}
+
+	mtx.lock();
+	GetLocalTime(&(pData->st));
+	pData->type = LOG_CUSTOM;
+
+	strcpy(pData->funcName, "CreateFile");
+	pData->argNum = 7;
+
+	strcpy(pData->argName[0], "lpFileName");
+	strcpy(pData->argName[1], "dwDesiredAccess");
+	strcpy(pData->argName[2], "dwShareMode");
+	strcpy(pData->argName[3], "lpSecurityAttributes");
+	strcpy(pData->argName[4], "dwCreationDisposition");
+	strcpy(pData->argName[5], "dwFlagsAndAttributes");
+	strcpy(pData->argName[6], "hTemplateFile");
+
+
+	sprintf(pData->argData[0], "Value: \"%s\"", lpFileName);
+	sprintf(pData->argData[1], "Value: 0x%x", dwDesiredAccess);
+	sprintf(pData->argData[2], "Value: 0x%x", dwShareMode);
+	sprintf(pData->argData[3], "Addr: 0x%p", lpSecurityAttributes);
+	sprintf(pData->argData[4], "Value: 0x%x", dwCreationDisposition);
+	sprintf(pData->argData[5], "Value: 0x%x", dwFlagsAndAttributes);
+	sprintf(pData->argData[6], "Addr: 0x%p", hTemplateFile);
+
+	update();
+	mtx.unlock();
+	return OldCreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+}
+
 // 关闭文件句柄
 static BOOL(WINAPI* OldCloseHandle)(HANDLE hObject) = CloseHandle;
 
@@ -442,17 +525,25 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewCloseHandle(HANDLE hObject) {
 	if (fileType == FILE_TYPE_DISK) {
 		FileData myFile = GetFileData(hObject);	// 要在关闭句柄之前进行
 
+		// 如果包含需要过滤的字符串，则直接返回原函数
+		if (strFilter(myFile.filename)) {
+			accessedFolders.erase(myFile.folderPath);		// 从文件夹集合里面删除
+			return OldCloseHandle(hObject);
+		}
+
 		mtx.lock();
 		GetLocalTime(&(pData->st));
 		pData->type = LOG_CUSTOM;
 
 		strcpy(pData->funcName, "CloseHandle");
-		pData->argNum = 1;
+		pData->argNum = 2;
 
-		strcpy(pData->argName[0], "hObject");
+		strcpy(pData->argName[0], "Filename");
+		strcpy(pData->argName[1], "hObject");
 
-		sprintf(pData->argData[0], "Addr: 0x%p", hObject);
-
+		sprintf(pData->argData[0], "Value: \"%s\"", myFile.filename.c_str());
+		sprintf(pData->argData[1], "Addr: 0x%p", hObject);
+		
 		update();
 
 		/*
@@ -505,6 +596,12 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 	if (GetFileType(hFile) == FILE_TYPE_DISK) {
 		FileData myFile = GetFileData(hFile);
 
+		// 如果包含需要过滤的字符串，则直接返回原函数
+		if (strFilter(myFile.filename)) {
+			accessedFolders.erase(myFile.folderPath);		// 从文件夹集合里面删除
+			return OldReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+		}
+
 		mtx.lock();
 		GetLocalTime(&(pData->st));
 		pData->type = LOG_CUSTOM;
@@ -513,14 +610,14 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 		pData->argNum = 6;
 
 		// 加一个读取文件的文件名
-		strcpy(pData->argName[0], "fileName");
+		strcpy(pData->argName[0], "Filename");
 		strcpy(pData->argName[1], "hFile");
 		strcpy(pData->argName[2], "lpBuffer");
 		strcpy(pData->argName[3], "nNumberOfBytesToRead");
 		strcpy(pData->argName[4], "lpNumberOfBytesRead");
 		strcpy(pData->argName[5], "lpOverlapped");
 
-		sprintf(pData->argData[0], "Value: %s", myFile.filename.c_str());
+		sprintf(pData->argData[0], "Value: \"%s\"", myFile.filename.c_str());
 		sprintf(pData->argData[1], "Addr: 0x%p", hFile);
 		sprintf(pData->argData[2], "Addr: 0x%p", lpBuffer);
 		sprintf(pData->argData[3], "Value: 0x%x", nNumberOfBytesToRead);
@@ -621,6 +718,12 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewWriteFile(
 		*/
 		FileData myFile = GetFileData(hFile);
 
+		// 如果包含需要过滤的字符串，则直接返回原函数
+		if (strFilter(myFile.filename)) {
+			accessedFolders.erase(myFile.folderPath);		// 从文件夹集合里面删除
+			return OldWriteFile(hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten, lpOverlapped);
+		}
+
 		mtx.lock();
 		GetLocalTime(&(pData->st));
 		pData->type = LOG_CUSTOM;
@@ -629,14 +732,14 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewWriteFile(
 		pData->argNum = 6;
 
 		// 加一个读取文件的文件名
-		strcpy(pData->argName[0], "fileName");
+		strcpy(pData->argName[0], "Filename");
 		strcpy(pData->argName[1], "hFile");
 		strcpy(pData->argName[2], "lpBuffer");
 		strcpy(pData->argName[3], "nNumberOfBytesToRead");
 		strcpy(pData->argName[4], "lpNumberOfBytesRead");
 		strcpy(pData->argName[5], "lpOverlapped");
 
-		sprintf(pData->argData[0], "Value: %s", myFile.filename.c_str());
+		sprintf(pData->argData[0], "Value: \"%s\"", myFile.filename.c_str());
 		sprintf(pData->argData[1], "Addr: 0x%p", hFile);
 		sprintf(pData->argData[2], "Addr: 0x%p", lpBuffer);
 		sprintf(pData->argData[3], "Value: 0x%x", nNumberOfBytesToWrite);
@@ -1117,7 +1220,7 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegCreateKeyExA(
 
 	// 复制参数值
 	sprintf(pData->argData[0], "Addr: 0x%p", hKey);
-	sprintf(pData->argData[1], "Value: %s", lpSubKey);
+	sprintf(pData->argData[1], "Value: \"%s\"", lpSubKey);
 	sprintf(pData->argData[2], "Value: 0x%x", Reserved);
 	sprintf(pData->argData[3], "Addr: 0x%p", lpClass);
 	sprintf(pData->argData[4], "Value: 0x%x", dwOptions);
@@ -1236,12 +1339,7 @@ extern "C" __declspec(dllexport)LSTATUS WINAPI NewRegCreateKeyEx(
 		update();
 	}
 
-	char lpSubKeyName[MAX_ARGDATA_LEN];
-	// 宽字节转char
-	memset(lpSubKeyName, 0, sizeof(lpSubKeyName));
-	WideCharToMultiByte(CP_ACP, 0, lpSubKey, wcslen(lpSubKey), lpSubKeyName, sizeof(lpSubKeyName), NULL, NULL);
-
-	if (strcmp(lpSubKeyName, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run") == 0) {
+	if (strcmp(buffer, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run") == 0) {
 		GetLocalTime(&(pData->st));
 		pData->type = LOG_WARNING;
 		printf("此程序存在创建注册表自启动项的操作！\n");
@@ -1274,7 +1372,7 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegOpenKeyExA(
 	strcpy(pData->argName[4], "phkResult");
 
 	sprintf(pData->argData[0], "Addr: 0x%p", hKey);
-	sprintf(pData->argData[1], "Value: %s", lpSubKey);
+	sprintf(pData->argData[1], "Value: \"%s\"", lpSubKey);
 	sprintf(pData->argData[2], "Value: 0x%x", ulOptions);
 	sprintf(pData->argData[3], "Value: 0x%x", samDesired);
 	sprintf(pData->argData[4], "Addr: 0x%p", phkResult);
@@ -1330,12 +1428,7 @@ extern "C" __declspec(dllexport)LSTATUS WINAPI NewRegOpenKeyEx(HKEY hKey, LPCWST
 
 	update();
 
-	char lpSubKeyName[MAX_ARGDATA_LEN];
-	// 宽字节转char
-	memset(lpSubKeyName, 0, sizeof(lpSubKeyName));
-	WideCharToMultiByte(CP_ACP, 0, lpSubKey, wcslen(lpSubKey), lpSubKeyName, sizeof(lpSubKeyName), NULL, NULL);
-
-	if (strcmp(lpSubKeyName, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run") == 0) {
+	if (strcmp(buffer, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run") == 0) {
 		GetLocalTime(&(pData->st));
 		pData->type = LOG_WARNING;
 		printf("此程序存在读取注册表自启动项的操作！\n");
@@ -1371,7 +1464,7 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegQueryValueExA(
 	strcpy(pData->argName[5], "lpcbData");
 
 	sprintf(pData->argData[0], "Addr: 0x%p", hKey);
-	sprintf(pData->argData[1], "Value: %s", lpValueName);
+	sprintf(pData->argData[1], "Value: \"%s\"", lpValueName);
 	sprintf(pData->argData[2], "Addr: 0x%p", lpReserved);
 	sprintf(pData->argData[3], "Addr: 0x%p", lpType);
 	sprintf(pData->argData[4], "Addr: 0x%p", lsendData);
@@ -1442,7 +1535,7 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegSetValueExA(
 	LPCSTR lpValueName,		// 值的名称
 	DWORD Reserved,			// 保留，必须为0
 	DWORD dwType,			// 值的类型
-	const BYTE * lsendData,	// 指向包含值数据的缓冲区的指针
+	const BYTE* lsendData,	// 指向包含值数据的缓冲区的指针
 	DWORD cbData			// 缓冲区的大小，以字节为单位
 ) {
 	mtx.lock();
@@ -1460,7 +1553,7 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegSetValueExA(
 	strcpy(pData->argName[5], "cbData");
 
 	sprintf(pData->argData[0], "Addr: 0x%p", hKey);
-	sprintf(pData->argData[1], "Value: %s", lpValueName);
+	sprintf(pData->argData[1], "Value: \"%s\"", lpValueName);
 	sprintf(pData->argData[2], "Value: 0x%x", Reserved);
 	sprintf(pData->argData[3], "Value: 0x%x", dwType);
 	sprintf(pData->argData[4], "Addr: 0x%p", lsendData);
@@ -1484,6 +1577,8 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegSetValueExA(
 
 	// 调用RegSetValueExA函数设置指定的注册表项的值，并将返回的状态保存在status变量中
 	auto status = OldRegSetValueExA(hKey, lpValueName, Reserved, dwType, lsendData, cbData);
+
+	std::cout << status << std::endl;
 
 	// 如果返回值为ERROR_SUCCESS，说明函数成功执行（也就是修改了注册表项的值）
 	if (status == ERROR_SUCCESS) {
@@ -1529,10 +1624,8 @@ extern "C" __declspec(dllexport)LSTATUS WINAPI NewRegSetValueEx(HKEY hKey, LPCWS
 
 	update();
 
-	// 调用RegSetValueExA函数设置指定的注册表项的值，并将返回的状态保存在status变量中
 	auto status = OldRegSetValueEx(hKey, lpValueName, Reserved, dwType, lpData, cbData);
 
-	// 如果返回值为ERROR_SUCCESS，说明函数成功执行（也就是修改了注册表项的值）
 	if (status == ERROR_SUCCESS) {
 		GetLocalTime(&(pData->st));
 		pData->type = LOG_WARNING;
@@ -1721,7 +1814,7 @@ extern "C" __declspec(dllexport) int WINAPI NewSend(
 
 	sprintf(pData->argData[0], "Addr: 0x%llx", s);
 	sprintf(pData->argData[1], "Value: 0x%x", len);
-	sprintf(pData->argData[2], "Value: %s", buf);
+	sprintf(pData->argData[2], "Value: \"%s\"", buf);
 	sprintf(pData->argData[3], "Value: 0x%x", flags);
 
 	/*
@@ -1823,7 +1916,7 @@ extern "C" __declspec(dllexport) int WINAPI NewRecv(
 
 	sprintf(pData->argData[0], "Addr: 0x%llx", s);
 	sprintf(pData->argData[1], "Value: 0x%x", len);
-	sprintf(pData->argData[2], "Value: %s", buf);
+	sprintf(pData->argData[2], "Value: \"%s\"", buf);
 	sprintf(pData->argData[3], "Value: 0x%x", flags);
 
 	/*
@@ -1877,10 +1970,12 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 		// 文件操作
 #ifdef TEST_FILE
 		DetourAttach(&(PVOID&)OldCreateFile, NewCreateFile);
+		DetourAttach(&(PVOID&)OldCreateFileA, NewCreateFileA);
 		DetourAttach(&(PVOID&)OldCloseHandle, NewCloseHandle);
 		DetourAttach(&(PVOID&)OldReadFile, NewReadFile);
 		DetourAttach(&(PVOID&)OldWriteFile, NewWriteFile);
 		DetourAttach(&(PVOID&)OldDeleteFile, NewDeleteFile);
+		DetourAttach(&(PVOID&)OldCopyFile, NewCopyFile);
 #endif
 
 		// 堆操作
@@ -1930,10 +2025,12 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 		// 文件操作
 #ifdef TEST_FILE
 		DetourDetach(&(PVOID&)OldCreateFile, NewCreateFile);
+		DetourDetach(&(PVOID&)OldCreateFileA, NewCreateFileA);
 		DetourDetach(&(PVOID&)OldCloseHandle, NewCloseHandle);
 		DetourDetach(&(PVOID&)OldReadFile, NewReadFile);
 		DetourDetach(&(PVOID&)OldWriteFile, NewWriteFile);
 		DetourDetach(&(PVOID&)OldDeleteFile, NewDeleteFile);
+		DetourDetach(&(PVOID&)OldCopyFile, NewCopyFile);
 #endif
 
 		// 堆操作
