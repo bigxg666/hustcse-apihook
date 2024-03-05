@@ -1131,6 +1131,14 @@ extern "C" __declspec(dllexport)BOOL WINAPI NewHeapFree(
 	DWORD dwFlags,
 	LPVOID lpMemory
 ) {
+	if (recordedHeapHandles.find(hHeap) != recordedHeapHandles.end())
+	{
+		
+	}
+	else {
+		return OldHeapFree(hHeap, dwFlags, lpMemory);
+	}
+	
 	mtx.lock();
 	GetLocalTime(&(pData->st));
 	pData->type = LOG_CUSTOM;
