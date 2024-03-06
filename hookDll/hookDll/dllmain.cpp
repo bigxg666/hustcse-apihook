@@ -198,19 +198,6 @@ extern "C" __declspec(dllexport)int WINAPI NewMessageBoxA(
 	update();
 	mtx.unlock();
 
-	/*
-	printf("\n\n****************************************\n");
-	printf("MessageBoxA Hooked\n");
-	GetLocalTime(&st);
-	printf("DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-	printf("lpText: %s\n", lpText);
-	printf("lpCaption: %s\n", lpCaption);
-	printf("uType: %u\n", uType); // 使用%u格式说明符输出UINT类型
-	//printf("uType: %u (%s)\n", uType, GetMessageBoxStyleName(uType)); // 输出样式参数及其含义
-	GetProcessInfo();
-	printf("****************************************\n\n");
-	*/
-
 	// 调用原始的函数，此处更改了原始弹窗内容
 	// return OldMessageBoxA(NULL, "new MessageBoxA", "Hooked", MB_OK);
 	return OldMessageBoxA(hWnd, lpText, lpCaption, uType);
@@ -258,20 +245,6 @@ extern "C" __declspec(dllexport)int WINAPI NewMessageBoxW(
 
 	update();
 	mtx.unlock();
-
-	/*
-	printf("\n\n****************************************\n");
-	printf("MessageBoxW Hooked\n");
-	GetLocalTime(&st);
-	printf("DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-	// 使用%ls格式说明符输出宽字符字符串
-	printf("lpText: %ls\n", lpText);
-	printf("lpCaption: %ls\n", lpCaption);
-	printf("uType: %u\n", uType); // 使用%u格式说明符输出UINT类型
-	//printf("uType: %u (%s)\n", uType, GetMessageBoxStyleName(uType)); // 输出样式参数及其含义
-	GetProcessInfo();
-	printf("****************************************\n\n");
-	*/
 
 	// 调用原始的函数，此处更改了弹窗内容
 	// return OldMessageBoxW(NULL, L"new MessageBoxW", L"Hooked", MB_OK);
@@ -432,29 +405,6 @@ extern "C" __declspec(dllexport) HANDLE WINAPI NewCreateFile(
 	sprintf(pData->argData[6], "Addr: 0x%p", hTemplateFile);
 
 	update();
-
-	/*
-	printf("\n\n******************************************\n");
-	printf("CreateFile Hooked\n");
-	GetLocalTime(&st);
-	printf("DLL日志输出:%d-%d-%d %02d: %02d: %02d: %03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-
-	int num = WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, NULL, 0, NULL, FALSE);
-	char* pchar = new char[num];
-	WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, pchar, num, NULL, FALSE);
-
-	std::cout << "lpFileName: " << pchar << std::endl;
-	std::cout << "dwDesiredAccess: 0x" << std::hex << dwDesiredAccess << std::endl;
-	std::cout << "dwShareMode: 0x" << std::hex << dwShareMode << std::endl;
-	std::cout << "lpSecurityAttributes: 0x" << std::hex << lpSecurityAttributes << std::endl;
-	std::cout << "dwCreationDisposition: 0x" << std::hex << dwCreationDisposition << std::endl;
-	std::cout << "dwFlagsAndAttributes: 0x" << std::hex << dwFlagsAndAttributes << std::endl;
-	std::cout << "hTemplateFile: 0x" << std::hex << hTemplateFile << std::endl;
-
-	printf("******************************************\n\n");
-	*/
-
-	// delete[] pchar;
 	mtx.unlock();
 	return OldCreateFile(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 }
@@ -551,27 +501,6 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewCloseHandle(HANDLE hObject) {
 		sprintf(pData->argData[1], "Addr: 0x%p", hObject);
 
 		update();
-
-		/*
-
-		printf("\n\n******************************************\n");
-		printf("Close DiskFile Handle Hooked\n");
-		GetLocalTime(&st);
-		printf("DLL日志输出:%d-%d-%d %02d: %02d: %02d: %03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-
-		std::cout << "DiskFile being closed: " << myFile.filename << std::endl;
-
-		result = OldCloseHandle(hObject);
-		if (result) {
-			std::cout << "DiskFile closed successfully" << std::endl;
-		}
-		else {
-			std::cout << "Failed to close DiskFile. Error code: " << GetLastError() << std::endl;
-		}
-
-		printf("******************************************\n\n");
-		*/
-
 		mtx.unlock();
 	}
 
@@ -632,30 +561,6 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 
 		update();
 
-		/*
-		printf("\n\n******************************************\n");
-		printf("ReadFile Hooked\n");
-		GetLocalTime(&st);
-		printf("DLL日志输出:%d-%d-%d %02d: %02d: %02d: %03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-		*/
-
-		// 不建议使用该段代码，该段代码会引起CreateFile操作，造成干扰
-		/*
-		TCHAR szFileName[MAX_PATH];
-		if (GetFinalPathNameByHandle(hFile, szFileName, MAX_PATH, FILE_NAME_NORMALIZED) != 0)
-		{
-			std::cout << "File being read: " << szFileName << std::endl;
-		}
-		*/
-
-		/*
-		std::cout << "Filename: " << myFile.filename << std::endl;		// 改为了输出文件名
-		std::cout << "Buffer address: 0x" << lpBuffer << std::endl;
-		std::cout << "Number of bytes to read: " << nNumberOfBytesToRead << std::endl;
-		std::cout << "Number of bytes read (out parameter): 0x" << lpNumberOfBytesRead << std::endl;
-		std::cout << "Overlapped structure address: 0x" << lpOverlapped << std::endl;
-		*/
-
 		// 判断操作范围是否有多个文件夹
 		if (accessedFolders.size() > 1) {
 
@@ -664,14 +569,6 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 			printf("此程序存在读取多个文件的操作！\n");
 			sprintf(pData->message, "此程序存在读取多个文件的操作！");
 			update();
-
-			/*
-			// 将输出字体颜色设置为红色
-			HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-			SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
-			std::cout << "Warning: Operation spans multiple folders." << std::endl;
-			SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
-			*/
 		}
 
 		// 防止出现空指针引用
@@ -684,8 +581,6 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 				fileContents.insert(content);
 			}
 		}
-
-		// printf("******************************************\n\n");
 
 		mtx.unlock();
 	}
@@ -714,13 +609,6 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewWriteFile(
 		/*
 		* GetFileType(hFile)函数会返回一个标识符，说明hFile句柄所代表的文件类型。
 		* 因此条件判断的意思是确保只拦截对磁盘文件的写操作。
-		*/
-		// 不建议使用该段代码，该段代码会引起CreateFile操作    
-		/*
-		TCHAR szFileName[MAX_PATH];
-		if (GetFinalPathNameByHandle(hFile, szFileName, MAX_PATH, FILE_NAME_NORMALIZED) != 0) {
-			std::cout << "File being written to: " << szFileName << std::endl;
-		}
 		*/
 		FileData myFile = GetFileData(hFile);
 
@@ -754,19 +642,6 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewWriteFile(
 
 		update();
 
-		/*
-		printf("\n\n******************************************\n");
-		printf("WriteFile Hooked\n");
-		GetLocalTime(&st);
-		printf("DLL日志输出:%d-%d-%d %02d: %02d: %02d: %03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-
-		std::cout << "Filename: " << myFile.filename << std::endl;//改为了输出文件名
-		std::cout << "Buffer address: 0x" << lpBuffer << std::endl;
-		std::cout << "Number of bytes to write: " << nNumberOfBytesToWrite << std::endl;
-		std::cout << "Number of bytes written (out parameter): 0x" << lpNumberOfBytesWritten << std::endl;
-		std::cout << "Overlapped structure address: 0x" << lpOverlapped << std::endl;
-
-		*/
 		// 判断操作范围是否有多个文件夹
 		if (accessedFolders.size() > 1) {
 			GetLocalTime(&(pData->st));
@@ -774,14 +649,6 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewWriteFile(
 			printf("此程序存在写入多个文件的操作！\n");
 			sprintf(pData->message, "此程序存在写入多个文件的操作！");
 			update();
-
-			/*
-			// 将输出字体颜色设置为红色
-			HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-			SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
-			std::cout << "Warning: Operation spans multiple folders." << std::endl;
-			SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
-			*/
 		}
 
 		// 通过后缀来判断是否修改了可执行文件包括exe，dll，ocx等
@@ -791,17 +658,8 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewWriteFile(
 			printf("此程序存在修改了可执行文件的操作！\n");
 			sprintf(pData->message, "此程序存在修改了可执行文件的操作！");
 			update();
-
-			/*
-			// 将输出字体颜色设置为红色
-			HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-			SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
-			std::cout << "Warning: Possible self-replication." << std::endl;
-			SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
-			*/
 		}
 
-		// printf("******************************************\n\n");
 		mtx.unlock();
 	}
 
@@ -812,14 +670,6 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewWriteFile(
 static BOOL(WINAPI* OldDeleteFile)(LPCTSTR lpFileName) = DeleteFile;
 
 extern "C" __declspec(dllexport) BOOL WINAPI NewDeleteFile(LPCTSTR lpFileName) {
-
-	/*
-	printf("\n\n******************************************\n");
-	printf("DeleteFile Hooked\n");
-	GetLocalTime(&st);
-	printf("DLL日志输出:%d-%d-%d %02d: %02d: %02d: %03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-	*/
-
 	mtx.lock();
 	GetLocalTime(&(pData->st));
 	pData->type = LOG_CUSTOM;
@@ -838,13 +688,6 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewDeleteFile(LPCTSTR lpFileName) {
 
 	update();
 
-	/*
-	int num = WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, NULL, 0, NULL, FALSE);
-	char* pchar = new char[num];
-	WideCharToMultiByte(CP_OEMCP, NULL, lpFileName, -1, pchar, num, NULL, FALSE);
-	std::cout << "File being deleted: " << pchar << std::endl;
-	*/
-
 	GetLocalTime(&(pData->st));
 	pData->type = LOG_WARNING;
 	printf("此程序进行了删除文件的操作，");
@@ -854,18 +697,13 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewDeleteFile(LPCTSTR lpFileName) {
 	if (result) {
 		printf("且删除成功！\n");
 		sprintf(pData->message + strlen(pData->message), "且删除成功！");
-		// std::cout << "File deleted successfully" << std::endl;
 	}
 	else {
 		pData->type = LOG_ERROR;
 		printf("且删除失败！\n");
 		sprintf(pData->message + strlen(pData->message), "且删除失败！");
-		// std::cout << "Failed to delete file. Error code: " << GetLastError() << std::endl;
 	}
 	update();
-
-	// printf("******************************************\n\n");
-	// delete[] pchar;
 	mtx.unlock();
 	return result;
 }
@@ -883,13 +721,6 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewCopyFile(
 	BOOL beFailIfExist
 ) {
 	BOOL result = OldCopyFile(lpExistingFileName, lpNewFileName, beFailIfExist);
-
-	/*
-	printf("\n\n******************************************\n");
-	printf("CopyFile Hooked\n");
-	GetLocalTime(&st);
-	printf("DLL日志输出:%d-%d-%d %02d: %02d: %02d: %03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-	*/
 
 	mtx.lock();
 	GetLocalTime(&(pData->st));
@@ -923,25 +754,16 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewCopyFile(
 	sprintf(pData->message, "此程序进行了自我复制的操作，");
 
 	if (result) {
-		/*
-		// 将输出字体颜色设置为红色
-		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-		SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
-		std::cout << "Warning: Self-copy detected." << std::endl;
-		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
-		*/
 		printf("且复制成功！\n");
 		sprintf(pData->message + strlen(pData->message), "且复制成功！");
 	}
 	else {
-		// std::cout << "Failed to copy file." << std::endl;
 		pData->type = LOG_ERROR;
 		printf("且复制失败！\n");
 		sprintf(pData->message + strlen(pData->message), "且复制失败！");
 	}
 	update();
 
-	// printf("******************************************\n\n");
 	mtx.unlock();
 	return result;
 }
@@ -968,7 +790,7 @@ bool FindHeapHandle(HANDLE hHeap) {
 	return recordedHeapHandles.find(hHeap) != recordedHeapHandles.end();
 }
 
-// 测试
+// 记录堆分配内存和释放内存是否一致
 std::unordered_set<LPVOID> recordedHeapAllocPtrs;
 
 bool FindHeapAllocPtr(LPVOID ptr) {
@@ -1067,10 +889,11 @@ extern "C" __declspec(dllexport)LPVOID WINAPI NewHeapAlloc(
 
 	// 检查句柄是否在记录的堆句柄集合中
 	if (!FindHeapHandle(hHeap)){
+		// 如果不在，则不显示后面的信息，直接返回
 		return ptr;
 	}
 
-	RecordHeapAllocPtr(ptr);		// 记录堆分配
+	RecordHeapAllocPtr(ptr);		// 记录堆分配内存的操作
 
 	mtx.lock();
 	GetLocalTime(&(pData->st));
@@ -1106,20 +929,25 @@ extern "C" __declspec(dllexport)BOOL WINAPI NewHeapFree(
 ) {
 	// 检查句柄是否在记录的堆句柄集合中
 	if (!FindHeapHandle(hHeap)) {
+		// 如果不在，则不显示后面的信息，直接返回
 		return OldHeapFree(hHeap, dwFlags, lpMemory);
 	}
 
+	mtx.lock();
+
 	int status = RecordHeapFreePtr(lpMemory);
 	if (status == HEAP_RELEASE_UNALLOC) {
+		// 如果lpMemory没有被分配，也就是Free操作与Allocate操作不对应
 		GetLocalTime(&(pData->st));
-		pData->type = LOG_WARNING;
+		pData->type = LOG_ERROR;
 		printf("此程序存在释放未分配内存的操作，且已被阻止！\n");
 		sprintf(pData->message, "此程序存在释放未分配内存的操作，且已被阻止！");
 		update();
-		return false;
+		mtx.unlock();
+		return false;				// 此处需要直接返回false，否则释放未分配内存的行为会导致程序异常
 	}
 
-	mtx.lock();
+	// 如果lpMemory被分配了，说明Free操作与Allocate操作相对应
 
 	GetLocalTime(&(pData->st));
 	pData->type = LOG_CUSTOM;
@@ -1135,6 +963,12 @@ extern "C" __declspec(dllexport)BOOL WINAPI NewHeapFree(
 	sprintf(pData->argData[1], "Value: 0x%x", dwFlags);
 	sprintf(pData->argData[2], "Addr: 0x%p", lpMemory);
 
+	update();
+
+	GetLocalTime(&(pData->st));
+	pData->type = LOG_INFO;
+	printf("此程序存在释放内存的操作，且释放的内存与申请相一致！\n");
+	sprintf(pData->message, "此程序存在释放内存的操作，且释放的内存与申请相一致！");
 	update();
 
 	mtx.unlock();
@@ -1214,24 +1048,6 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegCreateKeyExA(
 
 	// 消息输出完毕后一定要调用update函数使全局变量cnt自增，并使pData指针指向下一个表项
 	update();
-
-	/*
-	std::cout << "hKey: " << hKey << std::endl;
-	std::cout << "lpSubKey: " << lpSubKey << std::endl;
-	std::cout << "Reserved: " << Reserved << std::endl;
-	if (lpClass == NULL) {
-		std::cout << "lpClass: " << "NULL" << std::endl;
-	}
-	std::cout << "dwOptions: " << dwOptions << std::endl;
-	std::cout << "samDesired: " << samDesired << std::endl;
-	if (lpSecurityAttributes == NULL) {
-		std::cout << "lpSecurityAttributes: " << "NULL" << std::endl;
-	}
-	std::cout << "phkResult: " << phkResult << std::endl;
-	if (lpdwDisposition == NULL) {
-		std::cout << "lpdwDisposition: " << "NULL" << std::endl;
-	}
-	*/
 
 	/*
 	* SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run是一个特殊的注册表项。
@@ -1375,14 +1191,6 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegOpenKeyExA(
 
 	update();
 
-	/*
-	std::cout << "hKey: " << hKey << std::endl;
-	std::cout << "lpSubKey: " << lpSubKey << std::endl;
-	std::cout << "ulOptions: " << ulOptions << std::endl;
-	std::cout << "samDesired: " << samDesired << std::endl;
-	std::cout << "phkResult: " << phkResult << std::endl;
-	*/
-
 	LSTATUS status = OldRegOpenKeyExA(hKey, lpSubKey, ulOptions, samDesired, phkResult);
 
 	if (strcmp(lpSubKey, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run") == 0) {
@@ -1490,15 +1298,6 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegQueryValueExA(
 
 	update();
 
-	/*
-	std::cout << "hKey: " << hKey << std::endl;
-	std::cout << "lpValueName: " << lpValueName << std::endl;
-	std::cout << "lpReserved: " << lpReserved << std::endl;
-	std::cout << "lpType: " << lpType << std::endl;
-	std::cout << "lsendData: " << lsendData << std::endl;
-	std::cout << "lpcbData: " << lpcbData << std::endl;
-	*/
-
 	mtx.unlock();
 	return OldRegQueryValueExA(hKey, lpValueName, lpReserved, lpType, lsendData, lpcbData);
 }
@@ -1578,15 +1377,6 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegSetValueExA(
 	sprintf(pData->argData[5], "Value: 0x%x", cbData);
 
 	update();
-
-	/*
-	std::cout << "hKey: " << hKey << std::endl;
-	std::cout << "lpValueName: " << lpValueName << std::endl;
-	std::cout << "Reserved: " << Reserved << std::endl;
-	std::cout << "dwType: " << dwType << std::endl;
-	std::cout << "lsendData: " << lsendData << std::endl;
-	std::cout << "cbData: " << cbData << std::endl;
-	*/
 
 	// 调用RegSetValueExA函数设置指定的注册表项的值，并将返回的状态保存在status变量中
 	LSTATUS status = OldRegSetValueExA(hKey, lpValueName, Reserved, dwType, lsendData, cbData);
@@ -1694,10 +1484,6 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegCloseKey(
 		update();
 	}
 
-	/*
-	std::cout << "hKey: " << hKey << std::endl;
-	*/
-
 	mtx.unlock();
 	return status;
 }
@@ -1745,16 +1531,6 @@ extern "C" __declspec(dllexport) SOCKET WINAPI NewSocket(
 
 	update();
 
-	/*
-	printf("\n\n****************************************\n");
-	printf("socket Hooked\n");
-	printf("Socket Parameters:\n");
-	printf("Address Family: %d\n", af);
-	printf("Socket Type: %d\n", type);
-	printf("Protocol: %d\n", protocol);
-	printf("****************************************\n\n");
-	*/
-
 	mtx.unlock();
 	return result;
 }
@@ -1784,12 +1560,6 @@ extern "C" __declspec(dllexport) int WINAPI NewBind(
 	sprintf(pData->argData[1], "Addr: 0x%p", name);
 	sprintf(pData->argData[2], "Value: 0x%x", namelen);
 
-	/*
-	printf("\n\n****************************************\n");
-	printf("bind Hooked\n");
-	printf("Socket Descriptor: %d\n", s);
-	*/
-
 	// 解析IP和端口
 	if (name->sa_family == AF_INET) {
 		struct sockaddr_in* addr_in = (struct sockaddr_in*)name;
@@ -1797,10 +1567,8 @@ extern "C" __declspec(dllexport) int WINAPI NewBind(
 		const char* ip_str = inet_ntop(AF_INET, &(addr_in->sin_addr), ip, INET_ADDRSTRLEN);
 		if (ip_str != NULL) {
 			sprintf(pData->argData[3], "%s", ip_str);
-			// printf("IP Address: %s\n", ip_str);
 		}
 		sprintf(pData->argData[4], "%d", ntohs(addr_in->sin_port));
-		// printf("Port: %d\n", ntohs(addr_in->sin_port));
 	}
 	else if (name->sa_family == AF_INET6) {
 		struct sockaddr_in6* addr_in6 = (struct sockaddr_in6*)name;
@@ -1808,15 +1576,11 @@ extern "C" __declspec(dllexport) int WINAPI NewBind(
 		const char* ip_str = inet_ntop(AF_INET6, &(addr_in6->sin6_addr), ip, INET6_ADDRSTRLEN);
 		if (ip_str != NULL) {
 			sprintf(pData->argData[3], "%s", ip_str);
-			// printf("IP Address: %s\n", ip_str);
 		}
 		sprintf(pData->argData[4], "%d", ntohs(addr_in6->sin6_port));
-		// printf("Port: %d\n", ntohs(addr_in6->sin6_port));
 	}
 
 	update();
-
-	// printf("****************************************\n\n");
 
 	mtx.unlock();
 	return result;
@@ -1856,15 +1620,6 @@ extern "C" __declspec(dllexport) int WINAPI NewSend(
 	sprintf(pData->argData[2], "Value: \"%s\"", buf);
 	sprintf(pData->argData[3], "Value: 0x%x", flags);
 
-	/*
-	printf("\n\n****************************************\n");
-	printf("send Hooked\n");
-	printf("Socket Descriptor: %d\n", s);
-	printf("Data Length: %d\n", len);
-	printf("Data: %s\n", buf);
-	printf("****************************************\n\n");
-	*/
-
 	update();
 	mtx.unlock();
 	return result;
@@ -1895,12 +1650,6 @@ extern "C" __declspec(dllexport) int WINAPI NewConnect(
 	sprintf(pData->argData[1], "Addr: 0x%p", name);
 	sprintf(pData->argData[2], "Value: 0x%x", namelen);
 
-	/*
-	printf("\n\n****************************************\n");
-	printf("connect Hooked\n");
-	printf("Socket Descriptor: %d\n", s);
-	*/
-
 	// 解析目标IP和端口
 	if (name->sa_family == AF_INET) {
 		struct sockaddr_in* addr_in = (struct sockaddr_in*)name;
@@ -1908,10 +1657,8 @@ extern "C" __declspec(dllexport) int WINAPI NewConnect(
 		const char* ip_str = inet_ntop(AF_INET, &(addr_in->sin_addr), ip, INET_ADDRSTRLEN);
 		if (ip_str != NULL) {
 			sprintf(pData->argData[3], "%s", ip_str);
-			// printf("Target IP Address: %s\n", ip_str);
 		}
 		sprintf(pData->argData[4], "%d", ntohs(addr_in->sin_port));
-		// printf("Target Port: %d\n", ntohs(addr_in->sin_port));
 	}
 	else if (name->sa_family == AF_INET6) {
 		struct sockaddr_in6* addr_in6 = (struct sockaddr_in6*)name;
@@ -1919,13 +1666,9 @@ extern "C" __declspec(dllexport) int WINAPI NewConnect(
 		const char* ip_str = inet_ntop(AF_INET6, &(addr_in6->sin6_addr), ip, INET6_ADDRSTRLEN);
 		if (ip_str != NULL) {
 			sprintf(pData->argData[3], "%s", ip_str);
-			// printf("Target IP Address: %s\n", ip_str);
 		}
 		sprintf(pData->argData[4], "%d", ntohs(addr_in6->sin6_port));
-		// printf("Target Port: %d\n", ntohs(addr_in6->sin6_port));
 	}
-
-	// printf("****************************************\n\n");
 
 	update();
 	mtx.unlock();
@@ -1957,15 +1700,6 @@ extern "C" __declspec(dllexport) int WINAPI NewRecv(
 	sprintf(pData->argData[1], "Value: 0x%x", len);
 	sprintf(pData->argData[2], "Value: \"%s\"", buf);
 	sprintf(pData->argData[3], "Value: 0x%x", flags);
-
-	/*
-	printf("\n\n****************************************\n");
-	printf("recv Hooked\n");
-	printf("Socket Descriptor: %d\n", s);
-	printf("Received Data Length: %d\n", result);
-	printf("Received Data: %s\n", buf);
-	printf("****************************************\n\n");
-	*/
 
 	update();
 	mtx.unlock();
