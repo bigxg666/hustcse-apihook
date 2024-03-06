@@ -9,72 +9,74 @@ SharedMemoryReader::SharedMemoryReader(QObject *parent)
 {
 }
 
-
-
 void SharedMemoryReader::readSharedMemory()
 {
-    // 获取标准输出句柄
-    // HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     qDebug() << "thread is running";
-    // 打开共享内存对象
     HANDLE hSharedMemory = OpenFileMapping(FILE_MAP_READ, FALSE, L"MySharedMemory");
     while (hSharedMemory == NULL) {
         qDebug() << "未检测到共享内存！";
         Sleep(1000);
         hSharedMemory = OpenFileMapping(FILE_MAP_READ, FALSE, L"MySharedMemory");
     }
-
-    // 将共享内存映射到当前进程的地址空间
+    // qDebug() << "success";
     LPVOID pSharedMemory = MapViewOfFile(hSharedMemory, FILE_MAP_READ, 0, 0, 0);
     if (pSharedMemory == NULL) {
         qDebug() << "映射共享内存失败！";
         CloseHandle(hSharedMemory);
         return;
     }
+    // qDebug() << "success";
+    SharedData* pSharedData = static_cast<SharedData*>(pSharedMemory);
 
-    bool backFlag = false;
-    uint8_t cnt = 0;
+    uint32_t cnt = 0;
+    LogInfo* pData = &(pSharedData->logInfoList[0]);
 
-    // 读取共享内存中的数据
     while (true) {
-        SharedData* pData = static_cast<SharedData*>(pSharedMemory);
-        if (pData->cnt == cnt) continue;
-        // while (cnt != pData->cnt) {
-        // 遍历日志表中的所有日志信息
-        for (int i = cnt; i < pData->cnt; i++) {
-            qDebug() << pData->cnt;
-            LogInfo* pLogInfo = &(pData->logInfoList[i]);
+        if (pSharedData->cnt == cnt) continue;
 
+        while (cnt != pSharedData->cnt) {
+
+            // qDebug() << "success";
             QString logMessage;
             QTextStream logStream(&logMessage);
 
-            logStream << "[" << pLogInfo->st.wYear << "-" << pLogInfo->st.wMonth << "-" << pLogInfo->st.wDay << " "
-                      << pLogInfo->st.wHour << ":" << pLogInfo->st.wMinute << ":" << pLogInfo->st.wSecond <<  "] ";
-
-            if (pLogInfo->type == LOG_CUSTOM) {
-                logStream << "[截获] 该程序使用了函数: " << pLogInfo->funcName << "\n";
-
-                emit API_Received(pLogInfo);
-                for (int j = 0; j < pLogInfo->argNum; j++) {
-                    logStream << QString("%1参数名: %2, 内容- %3\n").arg("", 32).arg(pLogInfo->argName[j]).arg(pLogInfo->argData[j]);
+            logStream << "[" << pData->st.wYear << "-" << pData->st.wMonth << "-" << pData->st.wDay << " "
+                      << pData->st.wHour << ":" << pData->st.wMinute << ":" << pData->st.wSecond <<  "] ";
+            // qDebug() << pData->st.wMonth;
+            // Sleep(1000);
+            QTextCodec *codec = QTextCodec::codecForName("GBK");
+            if (pData->type == LOG_CUSTOM) {
+                logStream << "[截获] 该程序使用了函数: " << pData->funcName << "\n";
+                // qDebug() << LOG_CUSTOM;
+                emit API_Received(pData);
+                for (int j = 0; j < pData->argNum; j++) {
+                    QString argName = QString::fromUtf8(pData->argName[j]);
+                    QString argData = QString::fromUtf8(pData->argData[j]);
+                    logStream << QString("%1 %2: %3\n").arg("", 32).arg(argName).arg(argData);
                 }
-            } else if (pLogInfo->type == LOG_INFO){
-                logStream << "[信息] " << pLogInfo->message << "\n";
             }
-            else if(pLogInfo->type == LOG_ERROR){
-                logStream << "[错误]" << pLogInfo->message << "\n";
-                emit messageReceived(logMessage);
+            else if (pData->type == LOG_INFO){
+                QString message = codec->toUnicode(pData->message);
+
+                logStream << "[信息] " << message << "\n";
             }
-            else if(pLogInfo->type == LOG_WARNING){
-                logStream << "[警告]" << pLogInfo->message << "\n";
+            else if(pData->type == LOG_ERROR){
+                QString message = codec->toUnicode(pData->message);
+
+                logStream << "[错误]" << message << "\n";
+
+            }
+            else if(pData->type == LOG_WARNING){
+                QString message = codec->toUnicode(pData->message);
+
+                logStream << "[警告]" << message << "\n";
                 emit messageReceived(logMessage);
             }
             else{
                 continue;
             }
 
-    #ifdef OUTPUT_TO_FILE
-
+#ifdef OUTPUT_TO_FILE
             QFile logFile(logFilePath);
 
             if (!logFile.exists()) {
@@ -87,20 +89,19 @@ void SharedMemoryReader::readSharedMemory()
                 fileStream << logMessage;
                 logFile.close();
             }
-    #else
+#else
             qDebug() << logMessage.trimmed();
 #endif
+            cnt++;
+            cnt %= MAX_CNT_NUM;
+            pData = &(pSharedData->logInfoList[cnt]);
         }
-        cnt = pData->cnt;
-
-        // 等待新的数据
 
         Sleep(1000);
     }
 
-    // 解除共享内存的映射
     UnmapViewOfFile(pSharedMemory);
 
-    // 关闭共享内存对象
     CloseHandle(hSharedMemory);
 }
+

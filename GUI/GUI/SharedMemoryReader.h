@@ -7,6 +7,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QDebug>
+#include <QTextCodec>
 #include <Windows.h>
 
 const BYTE LOG_UNINIT = 0xFF;
@@ -31,8 +32,6 @@ const int MAX_ARGDATA_LEN = 512;		// 每个参数的数据最大支持512字节
 // uint8_t cnt = 0;
 // 日志信息结构体
 typedef struct LogInfo {
-    uint8_t cnt = 0;					// 记录在日志表中的下标
-
     SYSTEMTIME st;						// 系统时间
     BYTE type = 0xFF;					// 日志类型
 
@@ -47,7 +46,7 @@ typedef struct LogInfo {
 
 // 共享变量结构体
 typedef struct SharedData {
-    uint8_t cnt = 0;									// 记录日志表中信息的个数
+    uint32_t cnt = 0;									// 记录日志表中信息的个数
     LogInfo logInfoList[MAX_CNT_NUM] = {};				// 日志表
 }SharedData;
 
