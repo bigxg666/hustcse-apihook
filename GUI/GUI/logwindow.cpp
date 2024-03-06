@@ -10,7 +10,9 @@ LogWindow::LogWindow(QWidget *parent) :
     //初始化Log界面
     loadLogContent();
     connect(ui->lineEdit, &QLineEdit::textChanged, this, &LogWindow::filterLogContent);
+    // connect(ui->comboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &LogWindow::filterLogContent);
     connect(ui->comboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &LogWindow::filterLogContent);
+
 
 }
 
@@ -33,8 +35,8 @@ void LogWindow::loadLogContent()
 {
     logModel = new QStandardItemModel(this);
 
-    QString currentPath = QDir::currentPath();
-    QString filePath = currentPath + "/log/log.txt";
+    // QString currentPath = QDir::currentPath();
+    // QString filePath = currentPath + "/log/log.txt";
 
     QFile logFile(logFilePath);
     if (!logFile.exists())
@@ -96,53 +98,43 @@ void LogWindow::loadLogContent()
 
 void LogWindow::filterLogContent()
 {
-    QString filterText = ui->lineEdit->text();
-    QString selectedType = ui->comboBox->currentText();
-
-    logModel->clear();
-
-    QFile logFile(logFilePath);
-    if (!logFile.exists())
-    {
-        qDebug() << "log.txt does not exist";
+    // Open the log file
+    QFile file(logFilePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return;
     }
 
-    if (logFile.open(QIODevice::ReadOnly | QIODevice::Text))
-    {
-        QTextStream in(&logFile);
-        bool isCaptured = false;
-        while (!in.atEnd())
-        {
-            QString line = in.readLine();
-            if (line.contains(filterText, Qt::CaseInsensitive) &&
-                (selectedType == "Default" || line.contains(selectedType, Qt::CaseInsensitive)))
-            {
-                QStandardItem* item = new QStandardItem(line);
+    // Read the last 1000 lines
+    QList<QString> lastLines;
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        lastLines.append(line);
+        if (lastLines.size() > 1000) {
+            lastLines.removeFirst();
+        }
+    }
 
-                QRegularExpression timestampRegex("\\[\\d{4}-\\d{1,2}-\\d{1,2} \\d{1,2}:\\d{1,2}:\\d{1,2}\\]");
-                if (timestampRegex.match(line).hasMatch()) {
-                    isCaptured = false;
-                }
+    // Clear the current model
+    QStandardItemModel *model = qobject_cast<QStandardItemModel *>(ui->listView->model());
+    if (model) {
+        model->clear();
+    }
 
-                if (line.contains("[截获]")) {
-                    isCaptured = true;
-                }
 
-                if (isCaptured) {
-                    item->setData(QColor(200, 200, 0), Qt::ForegroundRole);  // 深黄色
-                } else if (line.contains("[警告]")) {
-                    item->setData(QColor(Qt::red), Qt::ForegroundRole);
-                }
-
-                logModel->appendRow(item);
+    // Filter the lines
+    QString filterText = ui->lineEdit->text();
+    QString filterType = ui->comboBox->currentText();
+    for (const QString &line : lastLines) {
+        if (line.contains(filterText, Qt::CaseInsensitive)) {
+            if (filterType == "Type" || line.contains(filterType)) {
+                QStandardItem *item = new QStandardItem(line);
+                model->appendRow(item);
             }
         }
-        logFile.close();
     }
-    else
-    {
-        qDebug() << "Failed to open log.txt";
-    }
+
+    ui->listView->setModel(model);
+
 }
 
