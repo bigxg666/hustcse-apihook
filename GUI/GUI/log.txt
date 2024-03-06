@@ -153,3 +153,91 @@
                                 参数名: hHeap, 内容- Addr: 0x000001E62BE90000
                                 参数名: dwFlags, 内容- Value: 0x0
                                 参数名: dwBytes, 内容- Value: 0x78
+[2024-3-5 9:8:32] [信息] begin monitor.
+[2024-3-5 9:8:35] [截获] 该程序使用了函数: CreateFile
+                                参数名: lpFileName, 内容- Value: C:\Windows\Fonts\staticcache.dat
+                                参数名: dwDesiredAccess, 内容- Value: 0x80000000
+                                参数名: dwShareMode, 内容- Value: 0x5
+                                参数名: lpSecurityAttributes, 内容- Addr: 0x0000000000000000
+                                参数名: dwCreationDisposition, 内容- Value: 0x3
+                                参数名: dwFlagsAndAttributes, 内容- Value: 0x0
+                                参数名: hTemplateFile, 内容- Addr: 0x0000000000000000
+[2024-3-5 9:8:35] [截获] 该程序使用了函数: ReadFile
+                                参数名: fileName, 内容- Value: C:\Windows\Fonts\StaticCache.dat
+                                参数名: hFile, 内容- Addr: 0x000000000000012C
+                                参数名: lpBuffer, 内容- Addr: 0x0000000BF69DDB78
+                                参数名: nNumberOfBytesToRead, 内容- Value: 0x3c
+                                参数名: lpNumberOfBytesRead, 内容- Value: 0x3c
+                                参数名: lpOverlapped, 内容- Addr: 0x0000000000000000
+[2024-3-5 9:8:51] [截获] 该程序使用了函数: CreateFile
+                                参数名: lpFileName, 内容- Value: C:\Windows\Fonts\staticcache.dat
+                                参数名: dwDesiredAccess, 内容- Value: 0x80000000
+                                参数名: dwShareMode, 内容- Value: 0x5
+                                参数名: lpSecurityAttributes, 内容- Addr: 0x0000000000000000
+                                参数名: dwCreationDisposition, 内容- Value: 0x3
+                                参数名: dwFlagsAndAttributes, 内容- Value: 0x0
+                                参数名: hTemplateFile, 内容- Addr: 0x0000000000000000
+[2024-3-5 9:8:51] [截获] 该程序使用了函数: ReadFile
+                                参数名: fileName, 内容- Value: C:\Windows\Fonts\StaticCache.dat
+                                参数名: hFile, 内容- Addr: 0x0000000000000134
+                                参数名: lpBuffer, 内容- Addr: 0x000000BF4EFFD998
+                                参数名: nNumberOfBytesToRead, 内容- Value: 0x3c
+                                参数名: lpNumberOfBytesRead, 内容- Value: 0x3c
+                                参数名: lpOverlapped, 内容- Addr: 0x0000000000000000
+[2024-3-5 9:9:10] [截获] 该程序使用了函数: HeapCreate
+                                参数名: hHeap, 内容- Addr: 0x000001829B480000
+                                参数名: fIOoptions, 内容- Value: 0x1
+                                参数名: dwInitialSize, 内容- Value: 0xa000
+                                参数名: dwMaximumSize, 内容- Value: 0x64000
+[2024-3-5 9:9:10] [截获] 该程序使用了函数: HeapAlloc
+                                参数名: hHeap, 内容- Addr: 0x000001829B480000
+                                参数名: dwFlags, 内容- Value: 0x0
+                                参数名: dwBytes, 内容- Value: 0x78
+[2024-3-5 9:9:16] [截获] 该程序使用了函数: CreateFile
+                                参数名: lpFileName, 内容- Value: a.txt
+                                参数名: dwDesiredAccess, 内容- Value: 0xc0000000
+                                参数名: dwShareMode, 内容- Value: 0x1
+                                参数名: lpSecurityAttributes, 内容- Addr: 0x0000000000000000
+                                参数名: dwCreationDisposition, 内容- Value: 0x2
+                                参数名: dwFlagsAndAttributes, 内容- Value: 0x0
+                                参数名: hTemplateFile, 内容- Addr: 0x0000000000000000
+[2024-3-5 9:9:35] [截获] 该程序使用了函数: CreateFile
+                                参数名: lpFileName, 内容- Value: a.txt
+                                参数名: dwDesiredAccess, 内容- Value: 0x80000000
+                                参数名: dwShareMode, 内容- Value: 0x1
+                                参数名: lpSecurityAttributes, 内容- Addr: 0x0000000000000000
+                                参数名: dwCreationDisposition, 内容- Value: 0x4
+                                参数名: dwFlagsAndAttributes, 内容- Value: 0x0
+                                参数名: hTemplateFile, 内容- Addr: 0x0000000000000000
+[2024-3-5 9:10:10] [截获] 该程序使用了函数: Socket
+                                参数名: Address Family, 内容- Value: 0x2
+                                参数名: Socket Type, 内容- Value: 0x1
+                                参数名: Protocol, 内容- Value: 0x6
+[2024-3-5 9:10:12] [截获] 该程序使用了函数: Connect
+                                参数名: Socket Descriptor, 内容- Addr: 0x154
+                                参数名: name, 内容- Addr: 0x00000036191CF458
+                                参数名: namelen, 内容- Value: 0x10
+                                参数名: Target IP Address, 内容- 127.0.0.1
+                                参数名: Target Port, 内容- 1234
+[2024-3-5 9:10:13] [截获] 该程序使用了函数: Recv
+                                参数名: Socket Descriptor, 内容- Addr: 0x154
+                                参数名: Data Length, 内容- Value: 0xff
+                                参数名: Data, 内容- Value: 
+                                参数名: flags, 内容- Value: 0x0
+[2024-3-5 9:27:24] [信息] begin monitor.
+[0-0-0 0:0:0] [错误]This is an error message
+[0-0-0 0:0:0] [警告]This is a warning message
+[2024-3-5 9:28:28] [信息] begin monitor.
+[0-0-0 0:0:0] [错误]This is an error message
+[0-0-0 0:0:0] [警告]This is a warning message
+[0-0-0 0:0:0] [错误]This is an error message
+[0-0-0 0:0:0] [警告]This is a warning message
+[2024-3-5 9:33:48] [信息] begin monitor.
+[0-0-0 0:0:0] [错误]This is an error message
+[0-0-0 0:0:0] [警告]This is a warning message
+[2024-3-5 9:34:43] [信息] begin monitor.
+[0-0-0 0:0:0] [错误]This is an error message
+[0-0-0 0:0:0] [警告]This is a warning message
+[2024-3-5 9:42:55] [信息] begin monitor.
+[0-0-0 0:0:0] [错误]This is an error message
+[0-0-0 0:0:0] [警告]This is a warning message

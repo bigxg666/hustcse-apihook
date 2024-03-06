@@ -61,6 +61,11 @@ private slots:
 
     void insertLogInfo(LogInfo* logInfo);
 
+    void on_Error_Clear_clicked();
+
+    void on_Warning_Clear_clicked();
+
+
 private:
     Ui::MainWindow *ui;
     QLineEdit *fileLineEdit;

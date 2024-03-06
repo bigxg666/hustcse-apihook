@@ -67,19 +67,27 @@ void SharedMemoryReader::readSharedMemory()
             }
             else if(pLogInfo->type == LOG_WARNING){
                 logStream << "[警告]" << pLogInfo->message << "\n";
+                emit messageReceived(logMessage);
             }
             else{
                 continue;
             }
 
-#ifdef OUTPUT_TO_FILE
-            QFile logFile("C:/Users/zhuor/Desktop/secure_design/Test_GUI/GUI/log.txt");
+    #ifdef OUTPUT_TO_FILE
+
+            QFile logFile(logFilePath);
+
+            if (!logFile.exists()) {
+                logFile.open(QIODevice::WriteOnly);
+                logFile.close();
+            }
+
             if (logFile.open(QIODevice::Append | QIODevice::Text)) {
                 QTextStream fileStream(&logFile);
                 fileStream << logMessage;
                 logFile.close();
             }
-#else
+    #else
             qDebug() << logMessage.trimmed();
 #endif
         }

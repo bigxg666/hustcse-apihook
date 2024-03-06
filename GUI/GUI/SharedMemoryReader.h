@@ -65,6 +65,9 @@ public slots:
 signals:
     void messageReceived(QString message);
     void API_Received(LogInfo *API_Info);
+
+private:
+    QString logFilePath = "./log.txt";
 };
 
 #endif // SHAREDMEMORYREADER_H

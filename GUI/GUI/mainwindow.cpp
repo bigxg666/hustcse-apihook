@@ -132,7 +132,7 @@ void MainWindow::updateInfoText(QString message){
     // 根据消息内容设置文本颜色
     if (message.contains("错误")) {
         item->setForeground(0, QBrush(Qt::red));  // 将文本设为红色
-    } else if (message.contains("警告")) {
+    } else if(message.contains("警告")){
         item->setForeground(0, QBrush(QColor(200, 200, 0)));  // 将文本设为黄色
     }
 
@@ -168,5 +168,28 @@ void MainWindow::insertLogInfo(LogInfo* logInfo)
     ui->API_text->addTopLevelItem(item);
 }
 
+void MainWindow::on_Error_Clear_clicked()
+{
+    QTreeWidgetItemIterator it(ui->Info_text);
+    while (*it) {
+        if ((*it)->text(0).contains("错误")) {
+            delete *it;
+        } else {
+            ++it;
+        }
+    }
+}
+
+void MainWindow::on_Warning_Clear_clicked()
+{
+    QTreeWidgetItemIterator it(ui->Info_text);
+    while (*it) {
+        if ((*it)->text(0).contains("警告")) {
+            delete *it;
+        } else {
+            ++it;
+        }
+    }
+}
 
 
