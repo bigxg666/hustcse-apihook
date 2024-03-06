@@ -955,10 +955,13 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewCopyFile(
 // 由于程序alloc过于频繁，我们需要记录特定的堆句柄
 // 这一步是为了仅输出对应于我们create句柄的alloc
 std::unordered_set<HANDLE> recordedHeapHandles;
-
+std::unordered_set<HANDLE> recordedFreeHandles;
 // 记录堆句柄的函数
 void RecordHeapHandle(HANDLE hHeap) {
 	recordedHeapHandles.insert(hHeap);
+}
+void RecordFreeHandle(HANDLE hHeap) {
+	recordedFreeHandles.insert(hHeap);
 }
 
 static HANDLE(WINAPI* OldHeapCreate)(
@@ -1135,9 +1138,42 @@ extern "C" __declspec(dllexport)BOOL WINAPI NewHeapFree(
 	if (recordedHeapHandles.find(hHeap) != recordedHeapHandles.end())
 	{
 		judge = 1;
+		RecordFreeHandle(hHeap);
 		recordedHeapHandles.erase(hHeap);
 	
 	}
+	else if(recordedFreeHandles.find(hHeap) != recordedFreeHandles.end()){
+
+		mtx.lock();
+
+		GetLocalTime(&(pData->st));
+		pData->type = LOG_ERROR;
+		printf("发生了堆的重复释放！\n");
+		sprintf(pData->message, "发生了堆的重复释放！");
+		update();
+
+		GetLocalTime(&(pData->st));
+		pData->type = LOG_CUSTOM;
+
+		strcpy(pData->funcName, "HeapFree");
+		pData->argNum = 4;
+
+		strcpy(pData->argName[0], "hHeap");
+		strcpy(pData->argName[1], "dwFlags");
+		strcpy(pData->argName[2], "lpMemory");
+		strcpy(pData->argName[3], "judge");
+
+		sprintf(pData->argData[0], "Addr: 0x%p", hHeap);
+		sprintf(pData->argData[1], "Value: 0x%x", dwFlags);
+		sprintf(pData->argData[2], "Addr: 0x%p", lpMemory);
+		sprintf(pData->argData[3], "HeapCreate and HeapFree is not consistent!");
+		update();
+
+		mtx.unlock();
+
+		return OldHeapFree(hHeap, dwFlags, lpMemory);
+	}
+
 	else {
 		return OldHeapFree(hHeap, dwFlags, lpMemory);
 	}
