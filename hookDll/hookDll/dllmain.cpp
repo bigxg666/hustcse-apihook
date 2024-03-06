@@ -1,4 +1,4 @@
-﻿/*
+﻿﻿/*
 * dllmain.cpp : 定义 DLL 应用程序的入口点。
 */
 
@@ -17,6 +17,7 @@
 #include <string>
 #include <set>
 #include <unordered_set>
+#include <map>
 #include <mutex>
 
 #pragma comment(lib, "detours.lib")
@@ -548,7 +549,7 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewCloseHandle(HANDLE hObject) {
 
 		sprintf(pData->argData[0], "Value: \"%s\"", myFile.filename.c_str());
 		sprintf(pData->argData[1], "Addr: 0x%p", hObject);
-		
+
 		update();
 
 		/*
@@ -683,7 +684,7 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 				fileContents.insert(content);
 			}
 		}
-		
+
 		// printf("******************************************\n\n");
 
 		mtx.unlock();
@@ -951,17 +952,44 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewCopyFile(
 * 实现堆操作监控
 * HeapCreate HeapDestroy HeapAlloc HeapFree
 */
+#define HEAP_RELEASE_NORMAL 0				// 正常释放堆内存
+#define HEAP_RELEASE_UNALLOC -1				// 释放了没有分配的内存
 
-// 由于程序alloc过于频繁，我们需要记录特定的堆句柄
-// 这一步是为了仅输出对应于我们create句柄的alloc
+// 防止HeapAlloc函数卡死
 std::unordered_set<HANDLE> recordedHeapHandles;
-std::unordered_set<HANDLE> recordedFreeHandles;
+
 // 记录堆句柄的函数
 void RecordHeapHandle(HANDLE hHeap) {
 	recordedHeapHandles.insert(hHeap);
 }
-void RecordFreeHandle(HANDLE hHeap) {
-	recordedFreeHandles.insert(hHeap);
+
+// 找到了
+bool FindHeapHandle(HANDLE hHeap) {
+	return recordedHeapHandles.find(hHeap) != recordedHeapHandles.end();
+}
+
+// 测试
+std::unordered_set<LPVOID> recordedHeapAllocPtrs;
+
+bool FindHeapAllocPtr(LPVOID ptr) {
+	return recordedHeapAllocPtrs.find(ptr) != recordedHeapAllocPtrs.end();
+}
+
+// 记录堆分配内存的函数
+void RecordHeapAllocPtr(LPVOID ptr) {
+	printf("Alloc, Addr = %p!\n", ptr);
+	recordedHeapAllocPtrs.emplace(ptr);
+}
+
+// 记录堆释放内存的函数
+int RecordHeapFreePtr(LPVOID ptr) {
+	if (FindHeapAllocPtr(ptr)) {
+		// 找到了
+		printf("Free, Addr = %p!\n", ptr);
+		recordedHeapAllocPtrs.erase(ptr);	// 删掉
+		return HEAP_RELEASE_NORMAL;
+	}
+	return HEAP_RELEASE_UNALLOC;			// 没有被分配就释放
 }
 
 static HANDLE(WINAPI* OldHeapCreate)(
@@ -1000,23 +1028,6 @@ extern "C" __declspec(dllexport)HANDLE WINAPI NewHeapCreate(
 
 	update();
 
-	/*
-	printf("\n\n****************************************\n");
-	printf("HeapCreate Hooked\n");
-	// 记录堆句柄
-	RecordHeapHandle(hHeap);
-	printf("HeapCreate Hooked [Heap Handle: 0x%p]\n", hHeap);
-
-	GetLocalTime(&st);
-	printf("DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-
-	std::cout << "fIOoptions: " << fIOoptions << std::endl;
-	std::cout << "dwInitialSize: " << dwInitialSize << std::endl;
-	std::cout << "hHeap: " << hHeap << std::endl;
-
-	printf("****************************************\n\n");
-	*/
-
 	mtx.unlock();
 	return hHeap;
 }
@@ -1037,17 +1048,6 @@ extern "C" __declspec(dllexport)BOOL WINAPI NewHeapDestroy(HANDLE hHeap) {
 
 	update();
 
-	/*
-	printf("\n\n****************************************\n");
-	printf("HeapDestroy Hooked\n");
-	GetLocalTime(&st);
-	printf("DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-
-	std::cout << "hHeap: " << hHeap << std::endl;
-
-	printf("****************************************\n\n");
-	*/
-
 	mtx.unlock();
 	return OldHeapDestroy(hHeap);
 }
@@ -1058,35 +1058,19 @@ static LPVOID(WINAPI* OldHeapAlloc)(
 	SIZE_T dwBytes
 	) = HeapAlloc;
 
-bool isHookEnabled = true;
-
 extern "C" __declspec(dllexport)LPVOID WINAPI NewHeapAlloc(
 	HANDLE hHeap,
 	DWORD dwFlags,
 	SIZE_T dwBytes
 ) {
-	// 检查标志变量
-	if (!isHookEnabled) {
-		return OldHeapAlloc(hHeap, dwFlags, dwBytes);
-	}
-
-	// 禁用钩子函数，“上锁”
-	isHookEnabled = false;
+	LPVOID ptr = OldHeapAlloc(hHeap, dwFlags, dwBytes);
 
 	// 检查句柄是否在记录的堆句柄集合中
-	if (recordedHeapHandles.find(hHeap) != recordedHeapHandles.end())
-	{
-		/*
-		printf("\n\n****************************************\n");
-		printf("HeapAlloc Hooked\n");
-		// 输出分配内存的打印提示
-		printf("HeapAlloc Hooked [Heap Handle: 0x%p]\n", hHeap);
-		*/
+	if (!FindHeapHandle(hHeap)){
+		return ptr;
 	}
-	else {
-		isHookEnabled = true;
-		return OldHeapAlloc(hHeap, dwFlags, dwBytes);
-	}
+
+	RecordHeapAllocPtr(ptr);		// 记录堆分配
 
 	mtx.lock();
 	GetLocalTime(&(pData->st));
@@ -1105,22 +1089,8 @@ extern "C" __declspec(dllexport)LPVOID WINAPI NewHeapAlloc(
 
 	update();
 
-	/*
-	GetLocalTime(&st);
-	printf("DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-
-	std::cout << "hHeap: " << hHeap << std::endl;
-	std::cout << "dwFlags: " << dwFlags << std::endl;
-	std::cout << "dwBytes: " << dwBytes << std::endl;
-	std::cout << "lpMemory: " << lpMemory << std::endl;
-
-	printf("****************************************\n\n");
-	*/
-
 	mtx.unlock();
-	// 启用钩子函数，“开锁”
-	isHookEnabled = true;
-	return OldHeapAlloc(hHeap, dwFlags, dwBytes);
+	return ptr;
 }
 
 static BOOL(WINAPI* OldHeapFree)(
@@ -1134,97 +1104,41 @@ extern "C" __declspec(dllexport)BOOL WINAPI NewHeapFree(
 	DWORD dwFlags,
 	LPVOID lpMemory
 ) {
-	int judge = 0;
-	if (recordedHeapHandles.find(hHeap) != recordedHeapHandles.end())
-	{
-		judge = 1;
-		RecordFreeHandle(hHeap);
-		recordedHeapHandles.erase(hHeap);
-	
-	}
-	else if(recordedFreeHandles.find(hHeap) != recordedFreeHandles.end()){
-
-		mtx.lock();
-
-		GetLocalTime(&(pData->st));
-		pData->type = LOG_ERROR;
-		printf("发生了堆的重复释放！\n");
-		sprintf(pData->message, "发生了堆的重复释放！");
-		update();
-
-		GetLocalTime(&(pData->st));
-		pData->type = LOG_CUSTOM;
-
-		strcpy(pData->funcName, "HeapFree");
-		pData->argNum = 4;
-
-		strcpy(pData->argName[0], "hHeap");
-		strcpy(pData->argName[1], "dwFlags");
-		strcpy(pData->argName[2], "lpMemory");
-		strcpy(pData->argName[3], "judge");
-
-		sprintf(pData->argData[0], "Addr: 0x%p", hHeap);
-		sprintf(pData->argData[1], "Value: 0x%x", dwFlags);
-		sprintf(pData->argData[2], "Addr: 0x%p", lpMemory);
-		sprintf(pData->argData[3], "HeapCreate and HeapFree is not consistent!");
-		update();
-
-		mtx.unlock();
-
+	// 检查句柄是否在记录的堆句柄集合中
+	if (!FindHeapHandle(hHeap)) {
 		return OldHeapFree(hHeap, dwFlags, lpMemory);
 	}
 
-	else {
-		return OldHeapFree(hHeap, dwFlags, lpMemory);
+	int status = RecordHeapFreePtr(lpMemory);
+	if (status == HEAP_RELEASE_UNALLOC) {
+		GetLocalTime(&(pData->st));
+		pData->type = LOG_WARNING;
+		printf("此程序存在释放未分配内存的操作，且已被阻止！\n");
+		sprintf(pData->message, "此程序存在释放未分配内存的操作，且已被阻止！");
+		update();
+		return false;
 	}
-	
+
 	mtx.lock();
-
-	GetLocalTime(&(pData->st));
-	pData->type = LOG_WARNING;
-	printf("正在进行堆的释放！\n");
-	sprintf(pData->message, "正在进行堆的释放！");
-	update();
 
 	GetLocalTime(&(pData->st));
 	pData->type = LOG_CUSTOM;
 
 	strcpy(pData->funcName, "HeapFree");
-	pData->argNum = 4;
+	pData->argNum = 3;
 
 	strcpy(pData->argName[0], "hHeap");
 	strcpy(pData->argName[1], "dwFlags");
 	strcpy(pData->argName[2], "lpMemory");
-	strcpy(pData->argName[3], "judge");
 
 	sprintf(pData->argData[0], "Addr: 0x%p", hHeap);
 	sprintf(pData->argData[1], "Value: 0x%x", dwFlags);
 	sprintf(pData->argData[2], "Addr: 0x%p", lpMemory);
-	if (judge == 1) {
-		sprintf(pData->argData[3], "HeapCreate and HeapFree is consistent!");
-	}
-	else {
-		sprintf(pData->argData[3], "HeapCreate and HeapFree is not consistent!");
-	}
-	
 
 	update();
 
-	/*
-	printf("\n\n****************************************\n");
-	printf("HeapFree Hooked\n");
-	GetLocalTime(&st);
-	printf("DLL日志输出: %d-%d-%d %02d:%02d:%02d:%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-
-	std::cout << "hHeap: " << hHeap << std::endl;
-	std::cout << "dwFlags: " << dwFlags << std::endl;
-	std::cout << "lpMemory: " << lpMemory << std::endl;
-
-	printf("****************************************\n\n");
-	*/
-
 	mtx.unlock();
-	return OldHeapFree(hHeap, dwFlags, lpMemory);
+	return OldHeapFree(hHeap, dwFlags, lpMemory);;
 }
 
 
@@ -1252,7 +1166,7 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegOpenKeyExA(HKEY hKey, LPCS
 extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegOpenKeyEx(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult);
 extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegQueryValueExA(HKEY hKey, LPCSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPBYTE lsendData, LPDWORD lpcbData);
 extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegQueryValueExW(HKEY hKey, LPCWSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData);
-extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegSetValueExA(HKEY hKey, LPCSTR lpValueName, DWORD Reserved, DWORD dwType, const BYTE* lsendData, DWORD cbData);
+extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegSetValueExA(HKEY hKey, LPCSTR lpValueName, DWORD Reserved, DWORD dwType, const BYTE * lsendData, DWORD cbData);
 extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegSetValueEx(HKEY hKey, LPCWSTR lpValueName, DWORD Reserved, DWORD dwType, const BYTE * lpData, DWORD cbData);
 extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegCloseKey(HKEY hKey);
 
@@ -1639,7 +1553,7 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegSetValueExA(
 	LPCSTR lpValueName,		// 值的名称
 	DWORD Reserved,			// 保留，必须为0
 	DWORD dwType,			// 值的类型
-	const BYTE* lsendData,	// 指向包含值数据的缓冲区的指针
+	const BYTE * lsendData,	// 指向包含值数据的缓冲区的指针
 	DWORD cbData			// 缓冲区的大小，以字节为单位
 ) {
 	mtx.lock();
@@ -1698,7 +1612,7 @@ extern "C" __declspec(dllexport) LSTATUS WINAPI NewRegSetValueExA(
 	return status;
 }
 
-extern "C" __declspec(dllexport)LSTATUS WINAPI NewRegSetValueEx(HKEY hKey, LPCWSTR lpValueName, DWORD Reserved, DWORD dwType, const BYTE* lpData, DWORD cbData) {
+extern "C" __declspec(dllexport)LSTATUS WINAPI NewRegSetValueEx(HKEY hKey, LPCWSTR lpValueName, DWORD Reserved, DWORD dwType, const BYTE * lpData, DWORD cbData) {
 	mtx.lock();
 	GetLocalTime(&(pData->st));
 	pData->type = LOG_CUSTOM;
