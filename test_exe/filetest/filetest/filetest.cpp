@@ -36,6 +36,14 @@ int main() {
 	}
 	std::cout << "Test program: Data read from file: " << readBuffer << std::endl;
 
+	// 再次读取文件内容
+	if (!ReadFile(hFile, readBuffer, sizeof(readBuffer), &bytesRead, NULL)) {
+		std::cerr << "Failed to read from file. Error code: " << GetLastError() << std::endl;
+		CloseHandle(hFile);
+		return 1;
+	}
+	std::cout << "Test program: Data read from file: " << readBuffer << std::endl;
+
 	// 关闭文件
 	if (!CloseHandle(hFile)) {
 		std::cerr << "Failed to close file handle. Error code: " << GetLastError() << std::endl;

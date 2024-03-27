@@ -196,6 +196,8 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 		std::cout << "Number of bytes read (out parameter): 0x" << lpNumberOfBytesRead << std::endl;
 		std::cout << "Overlapped structure address: 0x" << lpOverlapped << std::endl;
 
+		printf("accessedFolders.size() = %d\n", accessedFolders.size());
+
 		//判断操作范围是否有多个文件夹
 		if (accessedFolders.size() > 1) {
 			//将输出字体颜色设置为红色

@@ -54,15 +54,7 @@ void MainWindow::on_pushButton_3_clicked()
 
 void MainWindow::on_pushButton_4_clicked()
 {
-    HANDLE hFile = CreateFileA(
-        "test.txt",
-        GENERIC_READ | GENERIC_WRITE,
-        0,
-        NULL,
-        CREATE_ALWAYS,
-        FILE_ATTRIBUTE_NORMAL,
-        NULL
-        );
+    HANDLE hFile = CreateFileA("test.txt", GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     CallMsgBox(L"已创建test.txt");
     DWORD sz = 0;
     char buf1[4096];
@@ -265,11 +257,11 @@ void MainWindow::on_pushButton_10_clicked()
 
 void MainWindow::on_pushButton_11_clicked()
 {
-    HANDLE hOpenFile = (HANDLE)CreateFile(L".\\testFolder\\test.txt", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, NULL, NULL);
+    HANDLE hOpenFileA = (HANDLE)CreateFile(L"a.txt", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, NULL, NULL);
     char buf[20];
     DWORD dw = 0;
-    ReadFile(hOpenFile,buf,sizeof(buf),&dw,NULL);
+    ReadFile(hOpenFileA,buf,sizeof(buf),&dw,NULL);
     CallMsgBox(L"已读testFolder下test.txt文件");
-    CloseHandle(hOpenFile);
+    CloseHandle(hOpenFileA);
 }
 

@@ -91,11 +91,11 @@ void update() {
 }
 
 // 文件信息结构体
-struct FileData {
+typedef struct FileData {
 	std::string filename;								// 完整文件名
 	std::string folderPath;								// 文件夹路径
 	std::string fileExtension;							// 文件扩展名
-};
+}FileData;
 
 // 全局变量定义
 std::mutex mtx;											// 信号量
@@ -263,7 +263,7 @@ std::set<std::string> accessedFolders;					// 存储已经访问过的文件夹�
 // 获取文件夹路径及文件后缀等信息
 FileData GetFileData(HANDLE hFile) {
 	FileData result;
-	accessedFolders.clear();
+	// accessedFolders.clear();
 
 	// 会引起CreateFile操作，但在NewCreateFile函数中进行了过滤
 	TCHAR szFileName[MAX_PATH];
@@ -563,7 +563,6 @@ extern "C" __declspec(dllexport) BOOL WINAPI NewReadFile(
 
 		// 判断操作范围是否有多个文件夹
 		if (accessedFolders.size() > 1) {
-
 			GetLocalTime(&(pData->st));
 			pData->type = LOG_WARNING;
 			printf("此程序存在读取多个文件的操作！\n");
@@ -1762,7 +1761,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 		// 注册表操作
 #ifdef TEST_REG
 		DetourAttach(&(PVOID&)OldRegCreateKeyExA, NewRegCreateKeyExA);
-		DetourAttach(&(PVOID&)OldRegCreateKeyEx, NewRegCreateKeyExA);
+		DetourAttach(&(PVOID&)OldRegCreateKeyEx, NewRegCreateKeyEx);
 		DetourAttach(&(PVOID&)OldRegOpenKeyExA, NewRegOpenKeyExA);
 		DetourAttach(&(PVOID&)OldRegOpenKeyEx, NewRegOpenKeyEx);
 		DetourAttach(&(PVOID&)OldRegQueryValueExA, NewRegQueryValueExA);
