@@ -142,7 +142,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <item row="5" column="0">
       <widget class="QPushButton" name="Error_Clear">
        <property name="text">
-        <string>Clear Erro Info</string>
+        <string>Clear Error Info</string>
        </property>
       </widget>
      </item>

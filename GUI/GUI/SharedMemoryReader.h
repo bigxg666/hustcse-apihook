@@ -17,7 +17,7 @@ const BYTE LOG_CUSTOM = 0x01;
 const BYTE LOG_WARNING = 0x02;
 const BYTE LOG_ERROR = 0x03;
 
-const int MAX_CNT_NUM = UINT8_MAX;
+const int MAX_CNT_NUM = UINT16_MAX;
 
 const BYTE CTRL_QUIT = 0x10;
 
