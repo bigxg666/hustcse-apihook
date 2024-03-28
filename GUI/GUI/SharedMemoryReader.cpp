@@ -64,7 +64,7 @@ void SharedMemoryReader::readSharedMemory()
                 QString message = codec->toUnicode(pData->message);
 
                 logStream << "[错误]" << message << "\n";
-
+                emit messageReceived(logMessage);
             }
             else if(pData->type == LOG_WARNING){
                 QString message = codec->toUnicode(pData->message);

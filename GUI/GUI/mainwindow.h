@@ -65,6 +65,7 @@ private slots:
 
     void on_Warning_Clear_clicked();
 
+    void on_ClearFuncButton_clicked();
 
 private:
     Ui::MainWindow *ui;

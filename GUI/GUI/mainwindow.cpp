@@ -18,7 +18,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(sharedMemoryReader, &SharedMemoryReader::messageReceived, this, &MainWindow::updateInfoText);
 
     connect(sharedMemoryReader, &SharedMemoryReader::API_Received, this, &MainWindow::insertLogInfo);
-
+    connect(ui->ClearFuncButton, &QPushButton::clicked, this, &MainWindow::on_ClearFuncButton_clicked);
 
     readerThread.start();
 
@@ -126,19 +126,25 @@ void MainWindow::on_log_button_clicked()
 }
 
 void MainWindow::updateInfoText(QString message){
-    QTreeWidgetItem *item = new QTreeWidgetItem(ui->Info_text);
-    item->setText(0, message);  // 将消息设置到树的节点上
+    // Create a new item
+    QStandardItem *item = new QStandardItem(message);
 
-    // 根据消息内容设置文本颜色
+    // Set the text color based on the message content
     if (message.contains("错误")) {
-        item->setForeground(0, QBrush(Qt::red));  // 将文本设为红色
+        item->setForeground(QBrush(Qt::red));  // Set the text to red
     } else if(message.contains("警告")){
-        item->setForeground(0, QBrush(QColor(200, 200, 0)));  // 将文本设为黄色
+        item->setForeground(QBrush(QColor(200, 200, 0)));  // Set the text to yellow
     }
 
-    ui->Info_text->addTopLevelItem(item);  // 添加节点到树上
-    ui->Info_text->resizeColumnToContents(0);  // 调整列宽以适应内容
+    // Add the item to the model
+    QStandardItemModel *model = qobject_cast<QStandardItemModel*>(ui->Info_text->model());
+    if (!model) {
+        model = new QStandardItemModel(this);
+        ui->Info_text->setModel(model);
+    }
+    model->appendRow(item);
 }
+
 
 void MainWindow::insertLogInfo(LogInfo* logInfo)
 {
@@ -170,26 +176,34 @@ void MainWindow::insertLogInfo(LogInfo* logInfo)
 
 void MainWindow::on_Error_Clear_clicked()
 {
-    QTreeWidgetItemIterator it(ui->Info_text);
-    while (*it) {
-        if ((*it)->text(0).contains("错误")) {
-            delete *it;
-        } else {
-            ++it;
+    QStandardItemModel *model = qobject_cast<QStandardItemModel*>(ui->Info_text->model());
+    if (!model) return;
+
+    for (int i = model->rowCount() - 1; i >= 0; --i) {
+        QStandardItem *item = model->item(i);
+        if (item->text().contains("错误")) {
+            model->removeRow(i);
         }
     }
 }
 
 void MainWindow::on_Warning_Clear_clicked()
 {
-    QTreeWidgetItemIterator it(ui->Info_text);
-    while (*it) {
-        if ((*it)->text(0).contains("警告")) {
-            delete *it;
-        } else {
-            ++it;
+    QStandardItemModel *model = qobject_cast<QStandardItemModel*>(ui->Info_text->model());
+    if (!model) return;
+
+    for (int i = model->rowCount() - 1; i >= 0; --i) {
+        QStandardItem *item = model->item(i);
+        if (item->text().contains("警告")) {
+            model->removeRow(i);
         }
     }
 }
+
+void MainWindow::on_ClearFuncButton_clicked()
+{
+    ui->API_text->clear();
+}
+
 
 

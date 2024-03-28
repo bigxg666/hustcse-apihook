@@ -35,9 +35,6 @@ void LogWindow::loadLogContent()
 {
     logModel = new QStandardItemModel(this);
 
-    // QString currentPath = QDir::currentPath();
-    // QString filePath = currentPath + "/log/log.txt";
-
     QFile logFile(logFilePath);
     if (!logFile.exists())
     {
@@ -58,9 +55,23 @@ void LogWindow::loadLogContent()
         QTextStream in(&logFile);
         bool isCaptured = false;
         logFile.seek(0);
+
+        // Use a queue to store the last 1000 lines
+        QQueue<QString> lastLines;
+
         while (!in.atEnd())
         {
             QString line = in.readLine();
+            lastLines.enqueue(line);
+
+            // If the queue's size is over 1000, remove the first element
+            if (lastLines.size() > 1000) {
+                lastLines.dequeue();
+            }
+        }
+
+        // Process the last 1000 lines
+        foreach (const QString &line, lastLines) {
             QStandardItem* item = new QStandardItem(line);
 
             QRegularExpression timestampRegex("\\[\\d{4}-\\d{1,2}-\\d{1,2} \\d{1,2}:\\d{1,2}:\\d{1,2}\\]");
@@ -74,15 +85,20 @@ void LogWindow::loadLogContent()
 
             if (isCaptured) {
                 item->setData(QColor(200, 200, 200), Qt::ForegroundRole);  // 灰色
+                logModel->appendRow(item);
             } else if (line.contains("[警告]")) {
                 item->setData(QColor(200, 200, 0), Qt::ForegroundRole);  // 深黄色
+                logModel->appendRow(item);
             } else if (line.contains("[错误]")) {
                 item->setData(QColor(Qt::red), Qt::ForegroundRole);  // 红色
+                logModel->appendRow(item);
             } else if (line.contains("[信息]")) {
                 item->setData(QColor(Qt::green), Qt::ForegroundRole);  // 绿色
+                logModel->appendRow(item);
             }
-
-            logModel->appendRow(item);
+            QStandardItem* originalItem = new QStandardItem(line);  // Create a new QStandardItem
+            originalItem->setData(item->data(Qt::ForegroundRole), Qt::ForegroundRole);  // Copy the color
+            originalLogItems.append(originalItem);  // Add the new QStandardItem to originalLogItems
         }
 
         logFile.close();
@@ -98,43 +114,43 @@ void LogWindow::loadLogContent()
 
 void LogWindow::filterLogContent()
 {
-    // Open the log file
-    QFile file(logFilePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return;
-    }
-
-    // Read the last 1000 lines
-    QList<QString> lastLines;
-    QTextStream in(&file);
-    while (!in.atEnd()) {
-        QString line = in.readLine();
-        lastLines.append(line);
-        if (lastLines.size() > 1000) {
-            lastLines.removeFirst();
-        }
-    }
-
-    // Clear the current model
-    QStandardItemModel *model = qobject_cast<QStandardItemModel *>(ui->listView->model());
-    if (model) {
-        model->clear();
-    }
-
+    // Create a new model for filtered content
+    QStandardItemModel *filteredModel = new QStandardItemModel(this);
 
     // Filter the lines
     QString filterText = ui->lineEdit->text();
+    if(filterText == "Search...")
+        filterText = "";
     QString filterType = ui->comboBox->currentText();
-    for (const QString &line : lastLines) {
-        if (line.contains(filterText, Qt::CaseInsensitive)) {
-            if (filterType == "Type" || line.contains(filterType)) {
-                QStandardItem *item = new QStandardItem(line);
-                model->appendRow(item);
+    bool isMatched = false;
+    for (QStandardItem *item : originalLogItems) {
+        QString line = item->text();
+
+        // Reset isMatched if the line has a timestamp
+        QRegularExpression timestampRegex("\\[\\d{4}-\\d{1,2}-\\d{1,2} \\d{1,2}:\\d{1,2}:\\d{1,2}\\]");
+        if (timestampRegex.match(line).hasMatch()) {
+            isMatched = false;
+        }
+        // Check if the line contains the filter text
+        if (line.contains(filterText, Qt::CaseInsensitive) || isMatched) {
+            isMatched = true;
+
+            // Check if the line matches the filter type
+            QColor itemColor = item->data(Qt::ForegroundRole).value<QColor>();
+            if ((filterType == "Type" && (itemColor == QColor(200, 200, 0) || itemColor == QColor(Qt::red) ||
+                                          itemColor == QColor(Qt::green) || itemColor == QColor(200, 200, 200))) ||
+                (filterType == "Warning" && itemColor == QColor(200, 200, 0)) ||
+                (filterType == "Error" && itemColor == QColor(Qt::red)) ||
+                (filterType == "Info" && itemColor == QColor(Qt::green)) ||
+                (filterType == "Custom" && itemColor == QColor(200, 200, 200))) {
+                QStandardItem *newItem = new QStandardItem(line);
+                newItem->setData(itemColor, Qt::ForegroundRole);
+                filteredModel->appendRow(newItem);
             }
         }
     }
 
-    ui->listView->setModel(model);
-
+    // Set the filtered model as the new model
+    ui->listView->setModel(filteredModel);
 }
 

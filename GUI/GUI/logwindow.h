@@ -10,6 +10,8 @@
 #include <QDir.h>
 #include <QRegularExpression>
 #include <QString>
+#include <QQueue>
+
 
 
 namespace Ui {
@@ -31,8 +33,9 @@ private slots:
 private:
     Ui::LogWindow *ui;
     QStandardItemModel *logModel;
-    // log.txt的绝对路径
+    // log.txt的相对路径
     QString logFilePath = "./log.txt";
+    QList<QStandardItem*> originalLogItems;
 
     void loadLogContent();
     void filterLogContent();
