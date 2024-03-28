@@ -114,7 +114,32 @@ void MainWindow::on_run_Button_clicked()
 void MainWindow::updateProcessInfo(const ProcessInfo& info) {
         ui->id->setText(QString::number(info.id));  // 设置进程ID
         ui->name->setText(info.name);  // 设置进程名称
-        ui->priority->setText(QString::number(info.priority));  // 设置进程优先级
+        // 将优先级的返回值转换为对应的类别英文
+        QString priorityStr;
+        switch (info.priority) {
+        case 0x00000040:
+            priorityStr = "IDLE_PRIORITY";
+            break;
+        case 0x00004000:
+            priorityStr = "BELOW_NORMAL";
+            break;
+        case 0x00000020:
+            priorityStr = "NORMAL";
+            break;
+        case 0x00008000:
+            priorityStr = "ABOVE_NORMAL";
+            break;
+        case 0x00000080:
+            priorityStr = "HIGH_PRIORITY";
+            break;
+        case 0x00000100:
+            priorityStr = "REALTIME_PRIORITY";
+            break;
+        default:
+            priorityStr = "UNKNOWN";
+        }
+
+        ui->priority->setText(priorityStr);  // 设置进程优先级
 }
 
 
@@ -148,6 +173,8 @@ void MainWindow::updateInfoText(QString message){
 
 void MainWindow::insertLogInfo(LogInfo* logInfo)
 {
+    QTextCodec *codec = QTextCodec::codecForName("GBK");
+
     // 将系统时间转换为字符串
     QString time = QString("%1-%2-%3 %4:%5:%6")
                        .arg(logInfo->st.wYear)
@@ -160,19 +187,20 @@ void MainWindow::insertLogInfo(LogInfo* logInfo)
     // 创建一个新的树形项目来存储时间和函数名
     QTreeWidgetItem* item = new QTreeWidgetItem(ui->API_text);
     item->setText(0, time);
-    item->setText(1, logInfo->funcName);
+    item->setText(1, codec->toUnicode(logInfo->funcName));
 
     // 遍历所有参数
     for(int i = 0; i < logInfo->argNum; i++) {
         // 创建一个新的树形项目来存储参数名称和数据
         QTreeWidgetItem* argItem = new QTreeWidgetItem(item);
-        argItem->setText(0, logInfo->argName[i]);
-        argItem->setText(1, logInfo->argData[i]);
+        argItem->setText(0, codec->toUnicode(logInfo->argName[i]));
+        argItem->setText(1, codec->toUnicode(logInfo->argData[i]));
     }
 
     // 将新的树形项目添加到树形小部件中
     ui->API_text->addTopLevelItem(item);
 }
+
 
 void MainWindow::on_Error_Clear_clicked()
 {

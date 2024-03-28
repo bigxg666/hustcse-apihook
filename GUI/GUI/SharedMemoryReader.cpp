@@ -50,8 +50,8 @@ void SharedMemoryReader::readSharedMemory()
                 // qDebug() << LOG_CUSTOM;
                 emit API_Received(pData);
                 for (int j = 0; j < pData->argNum; j++) {
-                    QString argName = QString::fromUtf8(pData->argName[j]);
-                    QString argData = QString::fromUtf8(pData->argData[j]);
+                    QString argName = codec->toUnicode(pData->argName[j]);
+                    QString argData = codec->toUnicode(pData->argData[j]);
                     logStream << QString("%1 %2: %3\n").arg("", 32).arg(argName).arg(argData);
                 }
             }
