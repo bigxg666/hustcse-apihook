@@ -18,7 +18,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(sharedMemoryReader, &SharedMemoryReader::messageReceived, this, &MainWindow::updateInfoText);
 
     connect(sharedMemoryReader, &SharedMemoryReader::API_Received, this, &MainWindow::insertLogInfo);
-
+    connect(ui->ClearFuncButton, &QPushButton::clicked, this, &MainWindow::on_ClearFuncButton_clicked);
 
     readerThread.start();
 
@@ -114,7 +114,32 @@ void MainWindow::on_run_Button_clicked()
 void MainWindow::updateProcessInfo(const ProcessInfo& info) {
         ui->id->setText(QString::number(info.id));  // 设置进程ID
         ui->name->setText(info.name);  // 设置进程名称
-        ui->priority->setText(QString::number(info.priority));  // 设置进程优先级
+        // 将优先级的返回值转换为对应的类别英文
+        QString priorityStr;
+        switch (info.priority) {
+        case 0x00000040:
+            priorityStr = "IDLE_PRIORITY";
+            break;
+        case 0x00004000:
+            priorityStr = "BELOW_NORMAL";
+            break;
+        case 0x00000020:
+            priorityStr = "NORMAL";
+            break;
+        case 0x00008000:
+            priorityStr = "ABOVE_NORMAL";
+            break;
+        case 0x00000080:
+            priorityStr = "HIGH_PRIORITY";
+            break;
+        case 0x00000100:
+            priorityStr = "REALTIME_PRIORITY";
+            break;
+        default:
+            priorityStr = "UNKNOWN";
+        }
+
+        ui->priority->setText(priorityStr);  // 设置进程优先级
 }
 
 
@@ -126,22 +151,30 @@ void MainWindow::on_log_button_clicked()
 }
 
 void MainWindow::updateInfoText(QString message){
-    QTreeWidgetItem *item = new QTreeWidgetItem(ui->Info_text);
-    item->setText(0, message);  // 将消息设置到树的节点上
+    // Create a new item
+    QStandardItem *item = new QStandardItem(message);
 
-    // 根据消息内容设置文本颜色
+    // Set the text color based on the message content
     if (message.contains("错误")) {
-        item->setForeground(0, QBrush(Qt::red));  // 将文本设为红色
+        item->setForeground(QBrush(Qt::red));  // Set the text to red
     } else if(message.contains("警告")){
-        item->setForeground(0, QBrush(QColor(200, 200, 0)));  // 将文本设为黄色
+        item->setForeground(QBrush(QColor(200, 200, 0)));  // Set the text to yellow
     }
 
-    ui->Info_text->addTopLevelItem(item);  // 添加节点到树上
-    ui->Info_text->resizeColumnToContents(0);  // 调整列宽以适应内容
+    // Add the item to the model
+    QStandardItemModel *model = qobject_cast<QStandardItemModel*>(ui->Info_text->model());
+    if (!model) {
+        model = new QStandardItemModel(this);
+        ui->Info_text->setModel(model);
+    }
+    model->appendRow(item);
 }
+
 
 void MainWindow::insertLogInfo(LogInfo* logInfo)
 {
+    QTextCodec *codec = QTextCodec::codecForName("GBK");
+
     // 将系统时间转换为字符串
     QString time = QString("%1-%2-%3 %4:%5:%6")
                        .arg(logInfo->st.wYear)
@@ -154,42 +187,51 @@ void MainWindow::insertLogInfo(LogInfo* logInfo)
     // 创建一个新的树形项目来存储时间和函数名
     QTreeWidgetItem* item = new QTreeWidgetItem(ui->API_text);
     item->setText(0, time);
-    item->setText(1, logInfo->funcName);
+    item->setText(1, codec->toUnicode(logInfo->funcName));
 
     // 遍历所有参数
     for(int i = 0; i < logInfo->argNum; i++) {
         // 创建一个新的树形项目来存储参数名称和数据
         QTreeWidgetItem* argItem = new QTreeWidgetItem(item);
-        argItem->setText(0, logInfo->argName[i]);
-        argItem->setText(1, logInfo->argData[i]);
+        argItem->setText(0, codec->toUnicode(logInfo->argName[i]));
+        argItem->setText(1, codec->toUnicode(logInfo->argData[i]));
     }
 
     // 将新的树形项目添加到树形小部件中
     ui->API_text->addTopLevelItem(item);
 }
 
+
 void MainWindow::on_Error_Clear_clicked()
 {
-    QTreeWidgetItemIterator it(ui->Info_text);
-    while (*it) {
-        if ((*it)->text(0).contains("错误")) {
-            delete *it;
-        } else {
-            ++it;
+    QStandardItemModel *model = qobject_cast<QStandardItemModel*>(ui->Info_text->model());
+    if (!model) return;
+
+    for (int i = model->rowCount() - 1; i >= 0; --i) {
+        QStandardItem *item = model->item(i);
+        if (item->text().contains("错误")) {
+            model->removeRow(i);
         }
     }
 }
 
 void MainWindow::on_Warning_Clear_clicked()
 {
-    QTreeWidgetItemIterator it(ui->Info_text);
-    while (*it) {
-        if ((*it)->text(0).contains("警告")) {
-            delete *it;
-        } else {
-            ++it;
+    QStandardItemModel *model = qobject_cast<QStandardItemModel*>(ui->Info_text->model());
+    if (!model) return;
+
+    for (int i = model->rowCount() - 1; i >= 0; --i) {
+        QStandardItem *item = model->item(i);
+        if (item->text().contains("警告")) {
+            model->removeRow(i);
         }
     }
 }
+
+void MainWindow::on_ClearFuncButton_clicked()
+{
+    ui->API_text->clear();
+}
+
 
 

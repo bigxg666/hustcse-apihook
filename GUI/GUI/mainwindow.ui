@@ -119,26 +119,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
      </item>
     </layout>
    </widget>
-   <widget class="QTreeWidget" name="API_text">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>110</y>
-      <width>331</width>
-      <height>391</height>
-     </rect>
-    </property>
-    <column>
-     <property name="text">
-      <string>Name</string>
-     </property>
-    </column>
-    <column>
-     <property name="text">
-      <string>Value</string>
-     </property>
-    </column>
-   </widget>
    <widget class="QWidget" name="verticalLayoutWidget_2">
     <property name="geometry">
      <rect>
@@ -149,69 +129,74 @@ li.checked::marker { content: &quot;\2612&quot;; }
      </rect>
     </property>
     <layout class="QGridLayout" name="gridLayout_2">
-     <item row="0" column="0" colspan="2">
-      <widget class="QTreeWidget" name="Modules_Text">
-       <property name="lineWidth">
-        <number>1</number>
-       </property>
-       <property name="sizeAdjustPolicy">
-        <enum>QAbstractScrollArea::AdjustToContents</enum>
-       </property>
-       <property name="autoScroll">
-        <bool>true</bool>
-       </property>
-       <property name="horizontalScrollMode">
-        <enum>QAbstractItemView::ScrollPerItem</enum>
-       </property>
-       <property name="sortingEnabled">
-        <bool>false</bool>
-       </property>
-       <property name="allColumnsShowFocus">
-        <bool>true</bool>
-       </property>
-       <column>
-        <property name="text">
-         <string>Modules</string>
-        </property>
-       </column>
-      </widget>
-     </item>
-     <item row="6" column="0">
-      <widget class="QPushButton" name="Error_Clear">
-       <property name="text">
-        <string>Clear Erro Info</string>
-       </property>
-      </widget>
-     </item>
-     <item row="6" column="1">
+     <property name="sizeConstraint">
+      <enum>QLayout::SetFixedSize</enum>
+     </property>
+     <item row="5" column="1">
       <widget class="QPushButton" name="Warning_Clear">
        <property name="text">
         <string>Clear Warning Info</string>
        </property>
       </widget>
      </item>
-     <item row="2" column="0" colspan="2">
-      <widget class="QTreeWidget" name="Info_text">
+     <item row="5" column="0">
+      <widget class="QPushButton" name="Error_Clear">
+       <property name="text">
+        <string>Clear Erro Info</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0" colspan="2">
+      <widget class="QListView" name="Info_text">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>289</width>
+         <height>257</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>289</width>
+         <height>257</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>9</pointsize>
+        </font>
+       </property>
        <property name="mouseTracking">
         <bool>true</bool>
        </property>
        <property name="focusPolicy">
         <enum>Qt::ClickFocus</enum>
        </property>
-       <property name="lineWidth">
-        <number>1</number>
+       <property name="contextMenuPolicy">
+        <enum>Qt::ActionsContextMenu</enum>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::HLine</enum>
        </property>
        <property name="verticalScrollBarPolicy">
         <enum>Qt::ScrollBarAlwaysOn</enum>
        </property>
        <property name="horizontalScrollBarPolicy">
-        <enum>Qt::ScrollBarAsNeeded</enum>
+        <enum>Qt::ScrollBarAlwaysOn</enum>
        </property>
        <property name="sizeAdjustPolicy">
-        <enum>QAbstractScrollArea::AdjustToContentsOnFirstShow</enum>
+        <enum>QAbstractScrollArea::AdjustToContents</enum>
        </property>
        <property name="dragEnabled">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <property name="selectionBehavior">
         <enum>QAbstractItemView::SelectItems</enum>
@@ -219,31 +204,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
        <property name="horizontalScrollMode">
         <enum>QAbstractItemView::ScrollPerItem</enum>
        </property>
-       <property name="itemsExpandable">
-        <bool>false</bool>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Warning&amp;Error Info</string>
        </property>
-       <attribute name="headerCascadingSectionResizes">
-        <bool>false</bool>
-       </attribute>
-       <attribute name="headerDefaultSectionSize">
-        <number>100</number>
-       </attribute>
-       <attribute name="headerHighlightSections">
-        <bool>false</bool>
-       </attribute>
-       <attribute name="headerShowSortIndicator" stdset="0">
-        <bool>false</bool>
-       </attribute>
-       <column>
-        <property name="text">
-         <string>Info</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string/>
-        </property>
-       </column>
       </widget>
      </item>
     </layout>
@@ -296,6 +263,39 @@ li.checked::marker { content: &quot;\2612&quot;; }
       <widget class="QPushButton" name="log_button">
        <property name="text">
         <string>Log</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QWidget" name="verticalLayoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>109</y>
+      <width>331</width>
+      <height>251</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QTreeWidget" name="API_text">
+       <column>
+        <property name="text">
+         <string>Name</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Value</string>
+        </property>
+       </column>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="ClearFuncButton">
+       <property name="text">
+        <string>ClearAllFunc</string>
        </property>
       </widget>
      </item>

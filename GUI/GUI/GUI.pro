@@ -32,6 +32,6 @@ DISTFILES += \
     log.txt \
     GUI.pro.user
 
-LIBS += C:/Users/Leo/Documents/Gitee/hustcse-apihook/Detours/lib.X64/detours.lib
+LIBS += C:/Users/zhuor/Desktop/secure_design/detours/lib.X64/detours.lib
 
-INCLUDEPATH += C:/Users/Leo/Documents/Gitee/hustcse-apihook/Detours/include
+INCLUDEPATH += C:/Users/zhuor/Desktop/secure_design/detours/include
