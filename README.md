@@ -4,35 +4,42 @@
 
 2024春 HUST CSE 软件安全课程设计 基于 API HOOK 的软件行为分析系统
 
+仓库地址：[HUSTCSE-APIHOOK](https://gitee.com/cselyp/hustcse-apihook)
+
 ## 环境配置
 
 ### 开发环境
 
-+ Visual Studio 2022（x64）
++ Visual Studio 2022（x64 Release）
++ Qt Creator 12.0.2（Qt 6.6.2 MSVC 2019 64-bit 和 Qt 6.6.2 MinGW 11.2.0 64-bit）
 
 ### 依赖库
 
 + [Detours](https://github.com/Microsoft/Detours)（x64）
-+ Qt
 
 ## 项目架构
 
-### 依赖库的源码
+**说明：** 加粗字体表示的项目为正式结果；未加粗字体表示的项目仅作测试使用。
+
+### 依赖库及其源码
 
 + Detours-main: Detours库的源码
-+ Detours: 编译好的Detours库（x64）
++ **Detours:** 编译好的Detours库
+  + 使用x64 Native Tools Command Prompt for VS 2022进行编译
 
 ### Hook Dll
 
 + Dll1: 测试用Dll
-  + 通过编译和运行实验指导书最后的代码，理解Hook Dll的基本原理。
+  + 该项目通过编译和运行实验指导书最后的代码，理解Hook Dll的基本原理。
 + FileDll: 文件操作行为监测
 + heapDll: 堆操作行为监测
 + RegDll: 注册表相关行为监测
-+ networkDll: 网络通信操作异常行为分析 **【已完成，待测试】**
-+ MemoryDll: 内存拷贝监测与关联分析 **【未完成】**
-+ hookDll: 总的行为监测Dll
++ networkDll: 网络通信操作异常行为分析
++ ~~MemoryDll: 内存拷贝监测与关联分析~~ **该部分未实现**
++ **hookDll:** 总的行为监测Dll
   + 将所有行为监测Dll汇总为一个Dll，并且**能够向共享内存中写入日志**，以便日志显示程序读取日志。
+  + 使用Visual Studio 2022开发
+  + 编译配置采用x64 Release
 
 ### 注入程序
 
@@ -46,6 +53,9 @@
     + ShareMemory.cpp: 测试共享内存的写入
     + ReadShareMemory.cpp: 测试共享内存的读取
   + ReadLog: 从共享内存中读取日志并显示
++ **GUI**: 最终的日志信息显示程序，兼有注射器的功能，且**具有图形界面**
+  + 使用Qt Creator 12.0.2进行开发
+  + 使用Qt 6.6.2 (MSVC 2019 64-bit)进行编译
 
 ### 测试程序
 
@@ -55,27 +65,30 @@
   + regtest: 注册表等行为测试程序
   + networktest_client: 网络行为测试程序-客户端
   + networktest_server: 网络行为测试程序-服务端
-+ testCode: 总的测试程序，将所有测试程序汇总为一个程序
++ **testCode**: 总的测试程序，将所有测试程序汇总为一个程序，且**具有图形界面**
+  + 使用Qt Creator 12.0.2进行开发
+  + 使用Qt 6.6.2 (MinGW 11.2.0 64-bit)进行编译
 
-## 使用教程  
+## 编译与运行的教程  
+
++ 编译并运行行为监测Dll程序
+  + 打开项目文件：hustcse-apihook\hookDll\hookDll.sln
+  + 使用x64 Release的配置构建该项目，然后找到项目输出的可执行文件的位置
+![alt text](image-24.png)
+  + 将文件“hookDll.dll”拷贝出来，这就是最终的行为监测Dll程序
 
 ### 测试阶段
 
 + 在Visual Studio上正确配置Detours库（略）
 + 编译并运行Dll注入程序
   + 打开项目文件：hustcse-apihook\FCInject\FCInject.sln
-  + 修改Dll文件的路径
-    + Dll所在目录（DirPath）：hustcse-apihook\hookDll
-    + Dll文件的绝对路径（DLLPath）：hustcse-apihook\hookDll\hookDll.dll
-![alt text](image.png)
-  + 修改待监测程序的路径
-    + 待监测程序：hustcse-apihook\test_exe\testCode\testCode.exe
-![alt text](image-1.png)
-  + 编译项目FCInject，然后找到项目输出的可执行文件的位置
+  + 使用x64 Release的配置构建该项目，然后找到项目输出的可执行文件的位置
 ![alt text](image-5.png)
   + 右键可执行文件，**以管理员权限运行**注入程序
 ![alt text](屏幕截图(730).png)
-![alt text](image-6.png)
+  + 在程序中依次输入Dll文件所在文件夹的路径、Dll文件的完整路径、待注入程序（测试程序）的完整路径，按回车后即可完成注入
+![alt text](image-7.png)
+
 + 运行日志显示程序
   + 打开hustcse-apihook\ShareMemoryTest\ReadLog.exe
 ![alt text](image-3.png)
@@ -86,8 +99,41 @@
 
 ### 正式阶段
 
-1. xxxx
-2. xxxx
++ 编译并运行测试程序
+  + 使用Qt Creator 12.0.2打开项目文件：hustcse-apihook\testCode\testCode\testCode.pro
+  + 选择“Desktop Qt 6.6.2 MinGW 64-bit”工具包
+![alt text](image-18.png)
+  + 使用Release模式构建项目
+![alt text](image-19.png)
+  + 找到生成的可执行程序文件，将文件复制到某一空文件夹下
+![alt text](image-20.png)
+  + 打开程序“Qt 6.6.2 (MinGW 11.2.0 64-bit)”，进入可执行程序所在文件夹，执行指令：`windeployqt testCode.exe`
+![alt text](image-21.png)
+![alt text](image-22.png)
+  + 此时即可运行测试程序
+![alt text](image-23.png)
+
++ 编译并运行日志信息显示程序
+  + 使用Qt Creator 12.0.2打开项目文件：hustcse-apihook\GUI\GUI\GUI.pro
+  + 选择“Desktop Qt 6.6.2 MSVC2019 64bit”工具包
+![alt text](image-8.png)
+  + 使用Release模式构建项目
+![alt text](image-9.png)
+  + 找到生成的可执行程序文件，将文件复制到某一空文件夹下
+![alt text](image-10.png)
+  + 打开程序“Qt 6.6.2 (MSVC 2019 64-bit)”，进入可执行程序所在文件夹，执行指令：`windeployqt GUI.exe`
+![alt text](image-11.png)
+![alt text](image-12.png)
+  + 此时可执行程序运行所需的动态链接库就会全部导入至该目录下
+  + 然后在该目录下新建文件夹“dll”，将hookDll.dll拷贝至dll文件夹下
+![alt text](image-15.png)
+![alt text](image-14.png)
+  + 右键“GUI.exe”，以管理员身份运行。
+![alt text](屏幕截图(763).png)
+  + 点击“Open File”按钮，选择待监测的程序
+![alt text](image-13.png)
+  + 点击“Run”按钮，将Dll注入并启动待监测的程序
+![alt text](image-17.png)
 
 ## 特别说明
 
@@ -96,28 +142,29 @@
 2. 需要**先运行注入程序**，Dll会在内存中建立一块共享内存区域，然后**再运行日志显示程序**，日志显示程序才能打开共享内存。
 3. 在进行网络部分测试的时候需要并行运行测试服务器（networktest_server用于发送数据）和测试客户端（networktest_client用于接收数据）。
 4. 注入程序必须**以管理员权限运行**，否则文件删除与修改、注册表相关操作都将无法进行。
+5. hookDll程序的位置不可调，必须放在GUI可执行程序目录下的dll文件夹内。
 
 ## 课程设计任务与要求
 
 + 对于无源码情况下分析样本程序的行为，有多种方法。本次课程设计是利用Detours开源项目包提供的接口，完成基本的程序行为分析。具体课程设计任务见表1。任务主要分为API调用截获及分析两大部分。任务可以自己选择Windows（含Win7/win8/win10）平台上实现，编程用语言为C或者C++。其中使用的Windows平台使用微软的Detours开源库，可以在VS2019环境下编译后使用，后面会有详细介绍。  
 + 平台：Win7/Win8/Win10, VC++(VS2013/VS2015/VS2019)。
 
-### 1. 实现基本的第三方进程 Windows API 截获框架 【未完成】
+### 1. 实现基本的第三方进程 Windows API 截获框架
 
-1. 编译生成Detours库 【完成于文件夹“Detours”中】
-2. 完成挂钩框架DLL，实现对MessageBox调用截获，能打印出调用的参数、进程名称以及进程exe文件信息 **【进程名称以及进程exe文件信息尚未完成】**
+1. 编译生成Detours库
+2. 完成挂钩框架Dll，实现对MessageBox调用截获，能打印出调用的参数、进程名称以及进程exe文件信息
 3. 自编或者利用已有恶意代码样例（包含弹出对话框动作）
-4. 完成注入动作开启和关闭的“注射器”控制程序 【完成于项目“FCInject”中】
+4. 完成注入动作开启和关闭的“注射器”控制程序
 
-### 2. 实现堆操作 API 截获 【已完成】
+### 2. 实现堆操作 API 截获
 
 实现堆操作（创建，释放）API进行截获，打印出所有参数信息。
 
-### 3. 实现文件操作 API 截获 【已完成】
+### 3. 实现文件操作 API 截获
 
 实现对文件操作（创建，关闭，读写）API进行截获，打印出所有参数信息。
 
-### 4. 注册表操作 API 截获 【已完成】
+### 4. 注册表操作 API 截获
 
 实现对注册表操作（创建，关闭，读写）API进行截获，打印出所有参数信息。
 
@@ -149,14 +196,13 @@
 
 所设计实现的功能，有图形界面展示  
 【完成于项目“ReadLog”】  
-【待完善】
+【完善于项目“GUI”】
 
 ### 9. 行为检测样本库
 
 提供5个待检测的可能存在恶意的exe样本  
 【测试于项目“test_exe”】  
 【完成于项目“testCode”】  
-【待完善】
 
 ### 10. 项目开源
 
@@ -187,8 +233,6 @@
 设计并完成算法，记录并给出提示：
 
 1. 能够输出内存拷贝信息，并分析拷贝的内容流向。
-
-
 
 ## 参与贡献
 
